@@ -2,12 +2,19 @@
 
 La API de Juntadita expone endpoints versionados para frontend web.
 
-En esta tarea solo existe el health check:
+## Health check
 
 ```text
 GET /health
 ```
 
-Las proximas tareas agregaran auth, eventos, invitaciones, votacion, gastos y
-pagos.
+## Auth
 
+```text
+GET /api/v1/me
+PATCH /api/v1/me/profile
+```
+
+Los endpoints protegidos usan `Authorization: Bearer <access_token>`.
+
+Las proximas tareas agregaran eventos, invitaciones, votacion, gastos y pagos.
