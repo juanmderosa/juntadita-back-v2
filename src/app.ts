@@ -3,6 +3,7 @@ import express from "express";
 import { config } from "./config/config.js";
 import { errorHandler } from "./middlewares/errorHandler.js";
 import { healthRouter } from "./routes/health.router.js";
+import { usersRouter } from "./routes/users.router.js";
 
 const app = express();
 
@@ -22,6 +23,7 @@ app.use(
 app.use(express.json());
 
 app.use("/health", healthRouter);
+app.use("/api/v1", usersRouter);
 
 app.use(errorHandler);
 
