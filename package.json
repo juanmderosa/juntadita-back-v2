@@ -7,7 +7,7 @@
     "dev": "tsx --env-file=.env --watch ./src/app.ts",
     "build": "tsc",
     "start": "node dist/app.js",
-    "test": "node --test"
+    "test": "vitest run"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.106.0",
@@ -20,7 +20,8 @@
     "@types/express": "^5.0.0",
     "@types/node": "^24.12.3",
     "tsx": "^4.19.0",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.9"
   },
   "packageManager": "pnpm@10.33.2"
 }
