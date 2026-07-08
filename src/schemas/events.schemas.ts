@@ -120,6 +120,15 @@ export const createEventOptionSchema = z
       ),
   ]);
 
+export const createEventOptionsBatchSchema = z
+  .object({
+    options: z
+      .array(createEventOptionSchema)
+      .min(1, "At least one option is required")
+      .max(60, "At most 60 options can be created at once"),
+  })
+  .strict();
+
 export const updateEventOptionSchema = z
   .object({
     label: optionLabelSchema,
@@ -158,6 +167,9 @@ export type UpdateEventInput = z.infer<typeof updateEventSchema>;
 export type EventParams = z.infer<typeof eventParamsSchema>;
 export type ListEventsQuery = z.infer<typeof listEventsQuerySchema>;
 export type CreateEventOptionInput = z.infer<typeof createEventOptionSchema>;
+export type CreateEventOptionsBatchInput = z.infer<
+  typeof createEventOptionsBatchSchema
+>;
 export type UpdateEventOptionInput = z.infer<typeof updateEventOptionSchema>;
 export type EventOptionParams = z.infer<typeof eventOptionParamsSchema>;
 export type InviteParticipantsInput = z.infer<typeof inviteParticipantsSchema>;

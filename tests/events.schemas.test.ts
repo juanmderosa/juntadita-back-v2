@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  createEventOptionsBatchSchema,
   createEventOptionSchema,
   createEventSchema,
   inviteParticipantsSchema,
@@ -91,6 +92,25 @@ describe("event schemas", () => {
       }).success,
     ).toBe(false);
     expect(updateEventOptionSchema.safeParse({}).success).toBe(false);
+  });
+
+  it("limits batch event option creation", () => {
+    const option = {
+      type: "date" as const,
+      startAt: "2026-08-01T00:00:00-03:00",
+    };
+
+    expect(
+      createEventOptionsBatchSchema.safeParse({ options: [option] }).success,
+    ).toBe(true);
+    expect(
+      createEventOptionsBatchSchema.safeParse({ options: [] }).success,
+    ).toBe(false);
+    expect(
+      createEventOptionsBatchSchema.safeParse({
+        options: Array.from({ length: 61 }, () => option),
+      }).success,
+    ).toBe(false);
   });
 
   it("normalizes invite emails and rejects duplicates", () => {
