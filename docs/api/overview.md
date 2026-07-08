@@ -15,6 +15,17 @@ GET /api/v1/me
 PATCH /api/v1/me/profile
 ```
 
+## Events
+
+```text
+POST /api/v1/events
+GET /api/v1/events
+GET /api/v1/events/:eventId
+PATCH /api/v1/events/:eventId
+```
+
+Ver [`events.md`](events.md) para contratos, permisos y validaciones.
+
 Los endpoints protegidos usan `Authorization: Bearer <access_token>`.
 
 ## Infraestructura compartida

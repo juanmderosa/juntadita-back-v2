@@ -4,6 +4,7 @@ import { config } from "./config/config.js";
 import { errorHandler } from "./middlewares/errorHandler.js";
 import { healthRouter } from "./routes/health.router.js";
 import { usersRouter } from "./routes/users.router.js";
+import { eventsRouter } from "./routes/events.router.js";
 
 const app = express();
 
@@ -24,6 +25,7 @@ app.use(express.json());
 
 app.use("/health", healthRouter);
 app.use("/api/v1", usersRouter);
+app.use("/api/v1/events", eventsRouter);
 
 app.use(errorHandler);
 
