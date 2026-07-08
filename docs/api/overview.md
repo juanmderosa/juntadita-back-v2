@@ -22,6 +22,12 @@ POST /api/v1/events
 GET /api/v1/events
 GET /api/v1/events/:eventId
 PATCH /api/v1/events/:eventId
+GET /api/v1/events/:eventId/options
+POST /api/v1/events/:eventId/options
+PATCH /api/v1/events/:eventId/options/:optionId
+DELETE /api/v1/events/:eventId/options/:optionId
+GET /api/v1/events/:eventId/participants
+POST /api/v1/events/:eventId/participants/invite
 ```
 
 Ver [`events.md`](events.md) para contratos, permisos y validaciones.
@@ -37,4 +43,4 @@ Los endpoints protegidos usan `Authorization: Bearer <access_token>`.
 - Los contratos publicos son `SuccessResponse`, `PaginatedResponse` y
   `ErrorResponse`.
 
-Las proximas tareas agregaran eventos, invitaciones, votacion, gastos y pagos.
+Las proximas tareas agregaran grupos, votacion, gastos y pagos.

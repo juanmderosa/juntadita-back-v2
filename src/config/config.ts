@@ -14,4 +14,7 @@ export const config = {
   ]),
   supabaseUrl: process.env.SUPABASE_URL ?? "",
   supabaseServiceRoleKey: process.env.SUPABASE_SECRET_KEY ?? "",
+  resendApiKey: process.env.RESEND_API_KEY ?? "",
+  inviteFromEmail: process.env.INVITE_FROM_EMAIL ?? "",
+  appPublicUrl: process.env.APP_PUBLIC_URL ?? "http://localhost:5173",
 };
