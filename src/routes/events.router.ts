@@ -3,6 +3,7 @@ import { eventsController } from "../controllers/events.controller.js";
 import { requireAuth } from "../middlewares/requireAuth.js";
 import { validate } from "../middlewares/validation.middleware.js";
 import {
+  createEventOptionsBatchSchema,
   createEventOptionSchema,
   createEventSchema,
   eventOptionParamsSchema,
@@ -27,6 +28,11 @@ eventsRouter.post(
   "/:eventId/options",
   validate({ params: eventParamsSchema, body: createEventOptionSchema }),
   eventsController.createOption,
+);
+eventsRouter.post(
+  "/:eventId/options/batch",
+  validate({ params: eventParamsSchema, body: createEventOptionsBatchSchema }),
+  eventsController.createOptionsBatch,
 );
 eventsRouter.patch(
   "/:eventId/options/:optionId",

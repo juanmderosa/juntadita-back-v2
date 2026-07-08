@@ -125,12 +125,13 @@ export const eventsRepository = {
     const event = await this.findAccessibleById(userId, email, eventId);
     if (!event) return null;
 
-    const [options, participants] = await Promise.all([
+    const [options, participants, optionsLocked] = await Promise.all([
       this.listOptions(eventId),
       this.listParticipants(eventId),
+      this.hasPublishedOptions(eventId),
     ]);
 
-    return { ...event, options, participants };
+    return { ...event, optionsLocked, options, participants };
   },
 
   async updateBasicData(
@@ -202,6 +203,31 @@ export const eventsRepository = {
     return mapEventOptionRow(data);
   },
 
+  async createOptions(
+    eventId: string,
+    inputs: CreateEventOptionInput[],
+  ): Promise<EventOption[]> {
+    if (inputs.length === 0) return [];
+
+    const { data, error } = await getSupabaseAdmin()
+      .from("event_options")
+      .insert(
+        inputs.map((input) => ({
+          event_id: eventId,
+          type: input.type,
+          label: input.label || null,
+          start_at: input.startAt,
+          end_at: input.type === "range" ? input.endAt : null,
+        })),
+      )
+      .select(optionSelect)
+      .order("start_at", { ascending: true })
+      .overrideTypes<EventOptionRow[]>();
+
+    if (error) throw error;
+    return (data ?? []).map(mapEventOptionRow);
+  },
+
   async updateOption(
     eventId: string,
     optionId: string,
@@ -237,6 +263,37 @@ export const eventsRepository = {
       .eq("id", optionId);
 
     if (error) throw error;
+  },
+
+  async hasPublishedOptions(eventId: string) {
+    const [hasSentInvitations, hasVotes] = await Promise.all([
+      this.hasSentInvitations(eventId),
+      this.hasVotes(eventId),
+    ]);
+
+    return hasSentInvitations || hasVotes;
+  },
+
+  async hasSentInvitations(eventId: string) {
+    const { error, count } = await getSupabaseAdmin()
+      .from("email_logs")
+      .select("id", { count: "exact", head: true })
+      .eq("event_id", eventId)
+      .eq("template", "event_invitation")
+      .eq("status", "sent");
+
+    if (error) throw error;
+    return (count ?? 0) > 0;
+  },
+
+  async hasVotes(eventId: string) {
+    const { error, count } = await getSupabaseAdmin()
+      .from("votes")
+      .select("id", { count: "exact", head: true })
+      .eq("event_id", eventId);
+
+    if (error) throw error;
+    return (count ?? 0) > 0;
   },
 
   async listParticipants(eventId: string) {

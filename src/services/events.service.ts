@@ -1,4 +1,5 @@
 import type {
+  CreateEventOptionsBatchInput,
   CreateEventOptionInput,
   CreateEventInput,
   InviteParticipantsInput,
@@ -81,6 +82,7 @@ export const eventsService = {
     );
     return {
       ...updated,
+      optionsLocked: event.optionsLocked,
       options: event.options,
       participants: event.participants,
     };
@@ -99,6 +101,29 @@ export const eventsService = {
     const event = await requireEditablePollEvent(auth, eventId);
     void event;
     return eventsRepository.createOption(eventId, input);
+  },
+
+  async createOptionsBatch(
+    auth: AuthContext,
+    eventId: string,
+    input: CreateEventOptionsBatchInput,
+  ) {
+    await requireEditablePollEvent(auth, eventId);
+    const existingOptions = await eventsRepository.listOptions(eventId);
+    const existingKeys = new Set(existingOptions.map(getOptionKey));
+    const batchKeys = new Set<string>();
+    const uniqueInputs: CreateEventOptionInput[] = [];
+
+    for (const option of input.options) {
+      const key = getOptionInputKey(option);
+
+      if (existingKeys.has(key) || batchKeys.has(key)) continue;
+
+      batchKeys.add(key);
+      uniqueInputs.push(option);
+    }
+
+    return eventsRepository.createOptions(eventId, uniqueInputs);
   },
 
   async updateOption(
@@ -139,6 +164,10 @@ export const eventsService = {
     input: InviteParticipantsInput,
   ) {
     const event = await requireAdminEvent(auth, eventId);
+    if (event.type === "poll" && event.options.length === 0) {
+      throw new HttpError("Poll events require at least one option before inviting", 409);
+    }
+
     const profiles = await usersRepository.findProfilesByEmails(input.emails);
     const profileByEmail = new Map(profiles.map((profile) => [profile.email, profile]));
     const existing = await eventsRepository.findParticipantsByEmails(
@@ -232,6 +261,13 @@ async function requireEditablePollEvent(auth: AuthContext, eventId: string) {
     throw new HttpError("Voting is already closed", 409);
   }
 
+  if (await eventsRepository.hasPublishedOptions(eventId)) {
+    throw new HttpError(
+      "Event options are locked after invitations or votes",
+      409,
+    );
+  }
+
   return event;
 }
 
@@ -262,6 +298,22 @@ function validateMergedOption(option: EventOption) {
   ) {
     throw new HttpError("Option end must be after start", 400);
   }
+}
+
+function getOptionKey(option: EventOption) {
+  return [
+    option.type,
+    new Date(option.startAt).toISOString(),
+    option.endAt ? new Date(option.endAt).toISOString() : "",
+  ].join("|");
+}
+
+function getOptionInputKey(option: CreateEventOptionInput) {
+  return [
+    option.type,
+    new Date(option.startAt).toISOString(),
+    option.type === "range" ? new Date(option.endAt).toISOString() : "",
+  ].join("|");
 }
 
 async function sendAndLogInviteEmail(
