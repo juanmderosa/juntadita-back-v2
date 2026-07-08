@@ -22,6 +22,19 @@ export const usersRepository = {
     return mapProfileRow(data);
   },
 
+  async findProfilesByEmails(emails: string[]): Promise<Profile[]> {
+    if (emails.length === 0) return [];
+
+    const { data, error } = await getSupabaseAdmin()
+      .from("profiles")
+      .select(profileSelect)
+      .in("email", emails)
+      .overrideTypes<ProfileRow[]>();
+
+    if (error) throw error;
+    return (data ?? []).map(mapProfileRow);
+  },
+
   async updateProfileDisplayName(
     userId: string,
     displayName: string,

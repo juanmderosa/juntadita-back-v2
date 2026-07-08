@@ -52,7 +52,8 @@ GET /api/v1/events/:eventId
 ```
 
 Responde `SuccessResponse<EventDetail>`. Un usuario que no participa recibe
-`404` sin revelar la existencia del evento.
+`404` sin revelar la existencia del evento. El detalle incluye `options` y
+`participants`, excluyendo participantes `removed`.
 
 ## Editar datos basicos
 
@@ -69,6 +70,77 @@ PATCH /api/v1/events/:eventId
 
 Solo un participante `admin` puede editar. Tipo y calendario son inmutables en
 esta etapa. Un participante no admin recibe `403`.
+
+## Opciones de votacion
+
+```text
+GET /api/v1/events/:eventId/options
+POST /api/v1/events/:eventId/options
+PATCH /api/v1/events/:eventId/options/:optionId
+DELETE /api/v1/events/:eventId/options/:optionId
+```
+
+Participantes pueden listar opciones. Solo `admin` puede crear, editar o
+eliminar. Los eventos `fixed` no admiten opciones. Si la votacion ya cerro o el
+evento esta finalizado, los cambios responden `409`.
+
+Crear opcion por dia:
+
+```json
+{
+  "type": "date",
+  "label": "Sabado",
+  "startAt": "2026-08-01T00:00:00-03:00"
+}
+```
+
+Crear opcion por dia y hora:
+
+```json
+{
+  "type": "datetime",
+  "label": "Despues del trabajo",
+  "startAt": "2026-08-01T20:00:00-03:00"
+}
+```
+
+Crear franja:
+
+```json
+{
+  "type": "range",
+  "label": "Noche",
+  "startAt": "2026-08-01T20:00:00-03:00",
+  "endAt": "2026-08-01T23:00:00-03:00"
+}
+```
+
+## Invitados y participantes
+
+```text
+GET /api/v1/events/:eventId/participants
+POST /api/v1/events/:eventId/participants/invite
+```
+
+Participantes pueden listar invitados visibles. Solo `admin` puede invitar por
+emails en lote. Los emails se normalizan, no se duplican por evento y un
+participante `removed` se reactiva como `invited`.
+
+```json
+{
+  "emails": ["ana@example.com", "pepe@example.com"]
+}
+```
+
+El backend intenta enviar emails reales con Resend y audita cada intento en
+`email_logs` usando `template = event_invitation`. El link apunta a
+`/events/:eventId`; no hay links publicos ni tokens de invitacion en esta etapa.
+
+Variables requeridas para envio real:
+
+- `RESEND_API_KEY`
+- `INVITE_FROM_EMAIL`
+- `APP_PUBLIC_URL`
 
 ## EventDetail
 
@@ -88,6 +160,42 @@ type EventDetail = {
   finalizedAt: string | null;
   createdAt: string;
   updatedAt: string;
+  options: EventOption[];
+  participants: EventParticipant[];
+};
+
+type EventOption = {
+  id: string;
+  eventId: string;
+  type: "date" | "datetime" | "range";
+  label: string | null;
+  startAt: string;
+  endAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+type EventParticipant = {
+  id: string;
+  eventId: string;
+  userId: string | null;
+  email: string;
+  displayName: string | null;
+  role: "admin" | "guest";
+  status: "invited" | "joined" | "removed";
+  invitedBy: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+type InviteParticipantsResult = {
+  participants: EventParticipant[];
+  emails: Array<{
+    email: string;
+    status: "sent" | "failed" | "skipped";
+    providerMessageId: string | null;
+    errorMessage: string | null;
+  }>;
 };
 ```
 
@@ -98,3 +206,5 @@ type EventDetail = {
 - `poll` requiere cierre futuro y rechaza campos fixed.
 - `fixed` requiere inicio; el fin opcional debe ser posterior.
 - La edicion requiere titulo o descripcion.
+- Opciones `range` requieren `endAt > startAt`.
+- Emails de invitacion deben ser validos y unicos dentro del request.
