@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  createEventOptionSchema,
   createEventSchema,
+  inviteParticipantsSchema,
+  updateEventOptionSchema,
   updateEventSchema,
 } from "../src/schemas/events.schemas.js";
 
@@ -65,5 +68,41 @@ describe("event schemas", () => {
     });
     expect(updateEventSchema.safeParse({}).success).toBe(false);
     expect(updateEventSchema.safeParse({ type: "fixed" }).success).toBe(false);
+  });
+
+  it("validates event options by type", () => {
+    expect(
+      createEventOptionSchema.safeParse({
+        type: "date",
+        startAt: "2026-08-01T00:00:00-03:00",
+      }).success,
+    ).toBe(true);
+    expect(
+      createEventOptionSchema.safeParse({
+        type: "range",
+        startAt: "2026-08-01T20:00:00-03:00",
+      }).success,
+    ).toBe(false);
+    expect(
+      createEventOptionSchema.safeParse({
+        type: "range",
+        startAt: "2026-08-01T20:00:00-03:00",
+        endAt: "2026-08-01T19:00:00-03:00",
+      }).success,
+    ).toBe(false);
+    expect(updateEventOptionSchema.safeParse({}).success).toBe(false);
+  });
+
+  it("normalizes invite emails and rejects duplicates", () => {
+    expect(
+      inviteParticipantsSchema.parse({
+        emails: ["  ANA@example.com ", "pepe@example.com"],
+      }),
+    ).toEqual({ emails: ["ana@example.com", "pepe@example.com"] });
+    expect(
+      inviteParticipantsSchema.safeParse({
+        emails: ["ana@example.com", " ANA@example.com "],
+      }).success,
+    ).toBe(false);
   });
 });

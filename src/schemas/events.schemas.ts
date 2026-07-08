@@ -1,6 +1,7 @@
 import { z } from "zod";
 import {
   isoDateTimeSchema,
+  normalizedEmailSchema,
   paginationQuerySchema,
   uuidSchema,
 } from "./common.schemas.js";
@@ -76,7 +77,87 @@ export const updateEventSchema = z
 export const eventParamsSchema = z.object({ eventId: uuidSchema });
 export const listEventsQuerySchema = paginationQuerySchema;
 
+const optionLabelSchema = z
+  .string()
+  .trim()
+  .max(120, "Label must be at most 120 characters")
+  .nullable()
+  .optional();
+
+export const createEventOptionSchema = z
+  .discriminatedUnion("type", [
+    z
+      .object({
+        type: z.literal("date"),
+        label: optionLabelSchema,
+        startAt: isoDateTimeSchema,
+        endAt: z.never().optional(),
+      })
+      .strict(),
+    z
+      .object({
+        type: z.literal("datetime"),
+        label: optionLabelSchema,
+        startAt: isoDateTimeSchema,
+        endAt: z.never().optional(),
+      })
+      .strict(),
+    z
+      .object({
+        type: z.literal("range"),
+        label: optionLabelSchema,
+        startAt: isoDateTimeSchema,
+        endAt: isoDateTimeSchema,
+      })
+      .strict()
+      .refine(
+        (value) =>
+          new Date(value.endAt).getTime() > new Date(value.startAt).getTime(),
+        {
+          path: ["endAt"],
+          message: "Option end must be after start",
+        },
+      ),
+  ]);
+
+export const updateEventOptionSchema = z
+  .object({
+    label: optionLabelSchema,
+    startAt: isoDateTimeSchema.optional(),
+    endAt: isoDateTimeSchema.nullable().optional(),
+  })
+  .strict()
+  .refine(
+    (value) =>
+      value.label !== undefined ||
+      value.startAt !== undefined ||
+      value.endAt !== undefined,
+    "At least one option field is required",
+  );
+
+export const eventOptionParamsSchema = z.object({
+  eventId: uuidSchema,
+  optionId: uuidSchema,
+});
+
+export const inviteParticipantsSchema = z
+  .object({
+    emails: z
+      .array(normalizedEmailSchema)
+      .min(1, "At least one email is required")
+      .max(50, "At most 50 emails can be invited at once")
+      .refine(
+        (emails) => new Set(emails).size === emails.length,
+        "Emails must be unique",
+      ),
+  })
+  .strict();
+
 export type CreateEventInput = z.infer<typeof createEventSchema>;
 export type UpdateEventInput = z.infer<typeof updateEventSchema>;
 export type EventParams = z.infer<typeof eventParamsSchema>;
 export type ListEventsQuery = z.infer<typeof listEventsQuerySchema>;
+export type CreateEventOptionInput = z.infer<typeof createEventOptionSchema>;
+export type UpdateEventOptionInput = z.infer<typeof updateEventOptionSchema>;
+export type EventOptionParams = z.infer<typeof eventOptionParamsSchema>;
+export type InviteParticipantsInput = z.infer<typeof inviteParticipantsSchema>;
