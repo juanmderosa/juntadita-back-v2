@@ -1,6 +1,7 @@
 import type { NextFunction, Request, Response } from "express";
 import { paginatedResponse, successResponse } from "../helpers/response.helpers.js";
 import type {
+  CreateEventOptionsBatchInput,
   CreateEventOptionInput,
   CreateEventInput,
   EventOptionParams,
@@ -113,6 +114,26 @@ export const eventsController = {
         res.locals.body,
       );
       res.status(201).json(successResponse(option));
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  async createOptionsBatch(
+    _req: Request,
+    res: EventsResponse<{
+      params: EventParams;
+      body: CreateEventOptionsBatchInput;
+    }>,
+    next: NextFunction,
+  ) {
+    try {
+      const options = await eventsService.createOptionsBatch(
+        res.locals.auth,
+        res.locals.params.eventId,
+        res.locals.body,
+      );
+      res.status(201).json(successResponse(options));
     } catch (error) {
       next(error);
     }
