@@ -153,14 +153,19 @@ export const inviteParticipantsSchema = z
   .object({
     emails: z
       .array(normalizedEmailSchema)
-      .min(1, "At least one email is required")
       .max(50, "At most 50 emails can be invited at once")
-      .refine(
-        (emails) => new Set(emails).size === emails.length,
-        "Emails must be unique",
-      ),
+      .optional(),
+    groupIds: z.array(uuidSchema).max(50, "At most 50 groups can be selected").optional(),
   })
-  .strict();
+  .strict()
+  .refine(
+    (value) => !value.emails || new Set(value.emails).size === value.emails.length,
+    { path: ["emails"], message: "Emails must be unique" },
+  )
+  .refine(
+    (value) => (value.emails?.length ?? 0) > 0 || (value.groupIds?.length ?? 0) > 0,
+    "At least one email or group is required",
+  );
 
 export type CreateEventInput = z.infer<typeof createEventSchema>;
 export type UpdateEventInput = z.infer<typeof updateEventSchema>;
