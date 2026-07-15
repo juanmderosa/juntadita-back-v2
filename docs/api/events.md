@@ -128,9 +128,13 @@ participante `removed` se reactiva como `invited`.
 
 ```json
 {
-  "emails": ["ana@example.com", "pepe@example.com"]
+  "emails": ["ana@example.com", "pepe@example.com"],
+  "groupIds": ["550e8400-e29b-41d4-a716-446655440000"]
 }
 ```
+
+Los grupos son privados del organizador; el backend combina sus contactos con
+los emails manuales, elimina repetidos y limita el envio a 50 destinatarios.
 
 El backend intenta enviar emails reales con Resend y audita cada intento en
 `email_logs` usando `template = event_invitation`. El link apunta a
