@@ -9,6 +9,7 @@ import type {
 import { config } from "../config/config.js";
 import { eventsRepository } from "../repositories/events.repository.js";
 import { usersRepository } from "../repositories/users.repository.js";
+import { groupsRepository } from "../repositories/groups.repository.js";
 import { emailService } from "./email.service.js";
 import type { AuthContext } from "../types/auth.js";
 import type {
@@ -168,11 +169,21 @@ export const eventsService = {
       throw new HttpError("Poll events require at least one option before inviting", 409);
     }
 
-    const profiles = await usersRepository.findProfilesByEmails(input.emails);
+    const manualEmails = input.emails ?? [];
+    const groupIds = [...new Set(input.groupIds ?? [])];
+    const groupResult = await groupsRepository.getEmailsForOwnedGroups(auth.userId, groupIds);
+    if (groupResult.foundGroupIds.length !== groupIds.length) {
+      throw new HttpError("Group not found", 404);
+    }
+    const emails = [...new Set([...manualEmails, ...groupResult.emails])];
+    if (emails.length === 0) throw new HttpError("Selected groups have no contacts", 400);
+    if (emails.length > 50) throw new HttpError("At most 50 recipients can be invited at once", 400);
+
+    const profiles = await usersRepository.findProfilesByEmails(emails);
     const profileByEmail = new Map(profiles.map((profile) => [profile.email, profile]));
     const existing = await eventsRepository.findParticipantsByEmails(
       eventId,
-      input.emails,
+      emails,
     );
     const existingByEmail = new Map(existing.map((participant) => [
       participant.email,
@@ -181,7 +192,7 @@ export const eventsService = {
     const participants: EventParticipant[] = [];
     const emailResults: InviteEmailDelivery[] = [];
 
-    for (const email of input.emails) {
+    for (const email of emails) {
       const profile = profileByEmail.get(email);
       const participant = existingByEmail.get(email);
       let savedParticipant: EventParticipant;

@@ -28,6 +28,8 @@ PATCH /api/v1/events/:eventId/options/:optionId
 DELETE /api/v1/events/:eventId/options/:optionId
 GET /api/v1/events/:eventId/participants
 POST /api/v1/events/:eventId/participants/invite
+GET /api/v1/groups
+POST /api/v1/groups
 ```
 
 Ver [`events.md`](events.md) para contratos, permisos y validaciones.
