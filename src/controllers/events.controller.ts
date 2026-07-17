@@ -7,6 +7,9 @@ import type {
   EventOptionParams,
   EventParams,
   InviteParticipantsInput,
+  ReplaceVotesInput,
+  ResolveTieInput,
+  VoteParams,
   ListEventsQuery,
   UpdateEventOptionInput,
   UpdateEventInput,
@@ -211,5 +214,26 @@ export const eventsController = {
     } catch (error) {
       next(error);
     }
+  },
+
+  async replaceVotes(_req: Request, res: EventsResponse<{ params: VoteParams; body: ReplaceVotesInput }>, next: NextFunction) {
+    try {
+      const result = await eventsService.replaceVotes(res.locals.auth, res.locals.params.eventId, res.locals.body);
+      res.json(successResponse(result));
+    } catch (error) { next(error); }
+  },
+
+  async getVoting(_req: Request, res: EventsResponse<{ params: VoteParams }>, next: NextFunction) {
+    try {
+      const result = await eventsService.getVoting(res.locals.auth, res.locals.params.eventId);
+      res.json(successResponse(result));
+    } catch (error) { next(error); }
+  },
+
+  async resolveTie(_req: Request, res: EventsResponse<{ params: VoteParams; body: ResolveTieInput }>, next: NextFunction) {
+    try {
+      const result = await eventsService.resolveTie(res.locals.auth, res.locals.params.eventId, res.locals.body);
+      res.json(successResponse(result));
+    } catch (error) { next(error); }
   },
 };

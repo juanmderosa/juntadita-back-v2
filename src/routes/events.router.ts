@@ -9,6 +9,9 @@ import {
   eventOptionParamsSchema,
   eventParamsSchema,
   inviteParticipantsSchema,
+  replaceVotesSchema,
+  resolveTieSchema,
+  voteParamsSchema,
   listEventsQuerySchema,
   updateEventOptionSchema,
   updateEventSchema,
@@ -44,6 +47,9 @@ eventsRouter.delete(
   validate({ params: eventOptionParamsSchema }),
   eventsController.deleteOption,
 );
+eventsRouter.get("/:eventId/voting", validate({ params: voteParamsSchema }), eventsController.getVoting);
+eventsRouter.put("/:eventId/votes", validate({ params: voteParamsSchema, body: replaceVotesSchema }), eventsController.replaceVotes);
+eventsRouter.post("/:eventId/result/resolve-tie", validate({ params: voteParamsSchema, body: resolveTieSchema }), eventsController.resolveTie);
 eventsRouter.get(
   "/:eventId/participants",
   validate({ params: eventParamsSchema }),

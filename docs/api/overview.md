@@ -28,6 +28,9 @@ PATCH /api/v1/events/:eventId/options/:optionId
 DELETE /api/v1/events/:eventId/options/:optionId
 GET /api/v1/events/:eventId/participants
 POST /api/v1/events/:eventId/participants/invite
+GET /api/v1/events/:eventId/voting
+PUT /api/v1/events/:eventId/votes
+POST /api/v1/events/:eventId/result/resolve-tie
 GET /api/v1/groups
 POST /api/v1/groups
 ```
@@ -45,4 +48,4 @@ Los endpoints protegidos usan `Authorization: Bearer <access_token>`.
 - Los contratos publicos son `SuccessResponse`, `PaginatedResponse` y
   `ErrorResponse`.
 
-Las proximas tareas agregaran grupos, votacion, gastos y pagos.
+Las proximas tareas agregaran la interfaz de votacion, gastos y pagos.
