@@ -3,6 +3,8 @@ import type {
   CreateEventOptionInput,
   CreateEventInput,
   InviteParticipantsInput,
+  ReplaceVotesInput,
+  ResolveTieInput,
   UpdateEventOptionInput,
   UpdateEventInput,
 } from "../schemas/events.schemas.js";
@@ -15,7 +17,9 @@ import type { AuthContext } from "../types/auth.js";
 import type {
   EventOption,
   EventParticipant,
+  EventDetail,
   InviteEmailDelivery,
+  VotingState,
 } from "../types/events.js";
 import { HttpError } from "../types/httpError.js";
 
@@ -165,6 +169,9 @@ export const eventsService = {
     input: InviteParticipantsInput,
   ) {
     const event = await requireAdminEvent(auth, eventId);
+    if (event.finalizedAt) {
+      throw new HttpError("Finalized events do not allow more invitations", 409);
+    }
     if (event.type === "poll" && event.options.length === 0) {
       throw new HttpError("Poll events require at least one option before inviting", 409);
     }
@@ -242,6 +249,78 @@ export const eventsService = {
 
     return { participants, emails: emailResults };
   },
+
+  async replaceVotes(auth: AuthContext, eventId: string, input: ReplaceVotesInput) {
+    const identity = await getEventIdentity(auth);
+    const event = await this.getById(auth, eventId);
+    ensureVotingIsOpen(event);
+    const validOptionIds = new Set(event.options.map((option) => option.id));
+    if (input.optionIds.some((optionId) => !validOptionIds.has(optionId))) {
+      throw new HttpError("Every option must belong to the event", 400);
+    }
+    const participant = await eventsRepository.findActiveParticipant(
+      eventId,
+      identity.userId,
+      identity.email,
+    );
+    if (!participant) throw new HttpError("Event participant not found", 404);
+    await eventsRepository.replaceVotes(eventId, participant.id, input.optionIds);
+    return this.getVoting(auth, eventId);
+  },
+
+  async getVoting(auth: AuthContext, eventId: string): Promise<VotingState> {
+    const identity = await getEventIdentity(auth);
+    let event = await this.getById(auth, eventId);
+    if (event.type !== "poll" || !event.votingClosesAt) {
+      throw new HttpError("Only poll events support voting", 400);
+    }
+    if (!event.finalizedAt && new Date(event.votingClosesAt).getTime() <= Date.now()) {
+      await eventsRepository.finalizeIfDue(eventId);
+      event = await this.getById(auth, eventId);
+    }
+    if (!event.votingClosesAt) {
+      throw new HttpError("Only poll events support voting", 400);
+    }
+    const participant = await eventsRepository.findActiveParticipant(eventId, identity.userId, identity.email);
+    if (!participant) throw new HttpError("Event participant not found", 404);
+    const [voteRows, resultRow, tiedOptionIds] = await Promise.all([
+      eventsRepository.listVoteRows(eventId),
+      eventsRepository.getResult(eventId),
+      eventsRepository.listTiedOptionIds(eventId),
+    ]);
+    const votesByOption = new Map<string, number>();
+    const selectedOptionIds: string[] = [];
+    for (const row of voteRows) {
+      votesByOption.set(row.option_id, (votesByOption.get(row.option_id) ?? 0) + 1);
+      if (row.participant_id === participant.id) selectedOptionIds.push(row.option_id);
+    }
+    const eligibleParticipants = event.participants.filter((item) => item.status !== "removed").length;
+    return {
+      isOpen: !event.finalizedAt && new Date(event.votingClosesAt).getTime() > Date.now(),
+      votingClosesAt: event.votingClosesAt,
+      eligibleParticipants,
+      selectedOptionIds,
+      options: event.options.map((option) => {
+        const votesCount = votesByOption.get(option.id) ?? 0;
+        return { ...option, votesCount, availabilityPercent: eligibleParticipants === 0 ? 0 : Math.round((votesCount / eligibleParticipants) * 100) };
+      }),
+      result: resultRow ? {
+        status: resultRow.status,
+        winningOptionId: resultRow.winning_option_id,
+        totalVotes: resultRow.total_votes,
+        decidedBy: resultRow.decided_by,
+        decidedAt: resultRow.decided_at,
+      } : null,
+      tiedOptionIds,
+    };
+  },
+
+  async resolveTie(auth: AuthContext, eventId: string, input: ResolveTieInput) {
+    const event = await requireAdminEvent(auth, eventId);
+    if (event.type !== "poll") throw new HttpError("Only poll events support voting", 400);
+    await eventsRepository.resolveTie(eventId, input.optionId, auth.userId);
+    return this.getVoting(auth, eventId);
+  },
 };
 
 async function requireAdminEvent(auth: AuthContext, eventId: string) {
@@ -280,6 +359,13 @@ async function requireEditablePollEvent(auth: AuthContext, eventId: string) {
   }
 
   return event;
+}
+
+function ensureVotingIsOpen(event: EventDetail) {
+  if (event.type !== "poll") throw new HttpError("Only poll events support voting", 400);
+  if (event.finalizedAt || !event.votingClosesAt || new Date(event.votingClosesAt).getTime() <= Date.now()) {
+    throw new HttpError("Voting is already closed", 409);
+  }
 }
 
 function mergeOption(

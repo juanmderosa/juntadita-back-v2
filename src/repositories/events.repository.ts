@@ -29,6 +29,7 @@ type EventMembershipRow = {
   role: EventParticipantRole;
   events: EventRow | EventRow[];
 };
+type EventResultWinnerRow = { event_id: string; winning_option_id: string };
 
 const eventSelect =
   "id,created_by,title,description,type,currency_code,timezone,voting_closes_at,fixed_start_at,fixed_end_at,finalized_at,created_at,updated_at";
@@ -86,11 +87,13 @@ export const eventsRepository = {
     if (error) throw error;
 
     const total = count ?? 0;
-    return {
-      data: (data ?? []).flatMap((membership) => {
+    const summaries = (data ?? []).flatMap((membership) => {
         const event = getNestedEvent(membership.events);
         return event ? [mapEventRow(event, membership.role)] : [];
-      }),
+      });
+    const summariesWithWinner = await addWinningOptions(summaries);
+    return {
+      data: summariesWithWinner,
       pagination: {
         page,
         limit,
@@ -296,6 +299,81 @@ export const eventsRepository = {
     return (count ?? 0) > 0;
   },
 
+  async findActiveParticipant(eventId: string, userId: string, email: string) {
+    const { data, error } = await getSupabaseAdmin()
+      .from("event_participants")
+      .select(participantSelect)
+      .eq("event_id", eventId)
+      .neq("status", "removed")
+      .or(membershipFilter(userId, email))
+      .limit(1)
+      .maybeSingle<EventParticipantRow>();
+    if (error) throw error;
+    return data ? mapEventParticipantRow(data) : null;
+  },
+
+  async replaceVotes(eventId: string, participantId: string, optionIds: string[]) {
+    const { error } = await getSupabaseAdmin().rpc("replace_poll_votes", {
+      p_event_id: eventId,
+      p_participant_id: participantId,
+      p_option_ids: optionIds,
+    });
+    if (error) throw error;
+  },
+
+  async finalizeIfDue(eventId: string) {
+    const { error } = await getSupabaseAdmin().rpc("finalize_poll_event_if_due", {
+      p_event_id: eventId,
+    });
+    if (error) throw error;
+  },
+
+  async resolveTie(eventId: string, optionId: string, adminUserId: string) {
+    const { error } = await getSupabaseAdmin().rpc("resolve_poll_tie", {
+      p_event_id: eventId,
+      p_option_id: optionId,
+      p_admin_user_id: adminUserId,
+    });
+    if (error) throw error;
+  },
+
+  async listVoteRows(eventId: string) {
+    const { data, error } = await getSupabaseAdmin()
+      .from("votes")
+      .select("participant_id,option_id")
+      .eq("event_id", eventId)
+      .overrideTypes<Array<{ participant_id: string; option_id: string }>>();
+    if (error) throw error;
+    return data ?? [];
+  },
+
+  async getResult(eventId: string) {
+    const { data, error } = await getSupabaseAdmin()
+      .from("event_results")
+      .select("status,winning_option_id,total_votes,decided_by,decided_at")
+      .eq("event_id", eventId)
+      .maybeSingle<{
+        status: "finalized" | "tie_pending" | "no_winner";
+        winning_option_id: string | null;
+        total_votes: number;
+        decided_by: "system" | "admin";
+        decided_at: string;
+      }>();
+    if (error) throw error;
+    return data;
+  },
+
+  async listTiedOptionIds(eventId: string) {
+    const { data, error } = await getSupabaseAdmin()
+      .from("event_result_ties")
+      .select("option_id")
+      .eq("event_id", eventId)
+      .is("resolved_at", null)
+      .overrideTypes<Array<{ option_id: string }>>();
+    if (error) throw error;
+    return (data ?? []).map((row) => row.option_id);
+  },
+
   async listParticipants(eventId: string) {
     const { data, error } = await getSupabaseAdmin()
       .from("event_participants")
@@ -425,3 +503,26 @@ export const eventsRepository = {
     if (error) throw error;
   },
 };
+
+async function addWinningOptions(events: EventSummary[]) {
+  if (events.length === 0) return events;
+  const { data: resultRows, error: resultsError } = await getSupabaseAdmin()
+    .from("event_results")
+    .select("event_id,winning_option_id")
+    .in("event_id", events.map((event) => event.id))
+    .eq("status", "finalized")
+    .not("winning_option_id", "is", null)
+    .overrideTypes<EventResultWinnerRow[]>();
+  if (resultsError) throw resultsError;
+  const optionIds = (resultRows ?? []).map((row) => row.winning_option_id);
+  if (optionIds.length === 0) return events;
+  const { data: optionRows, error: optionsError } = await getSupabaseAdmin()
+    .from("event_options")
+    .select(optionSelect)
+    .in("id", optionIds)
+    .overrideTypes<EventOptionRow[]>();
+  if (optionsError) throw optionsError;
+  const optionsById = new Map((optionRows ?? []).map((row) => [row.id, mapEventOptionRow(row)]));
+  const winnerIdByEvent = new Map((resultRows ?? []).map((row) => [row.event_id, row.winning_option_id]));
+  return events.map((event) => ({ ...event, winningOption: optionsById.get(winnerIdByEvent.get(event.id) ?? "") ?? null }));
+}

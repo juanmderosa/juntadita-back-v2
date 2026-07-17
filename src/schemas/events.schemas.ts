@@ -167,6 +167,18 @@ export const inviteParticipantsSchema = z
     "At least one email or group is required",
   );
 
+export const voteParamsSchema = z.object({ eventId: uuidSchema });
+export const replaceVotesSchema = z
+  .object({
+    optionIds: z
+      .array(uuidSchema)
+      .min(1, "At least one option is required")
+      .max(60, "At most 60 options can be selected")
+      .refine((optionIds) => new Set(optionIds).size === optionIds.length, "Options must be unique"),
+  })
+  .strict();
+export const resolveTieSchema = z.object({ optionId: uuidSchema }).strict();
+
 export type CreateEventInput = z.infer<typeof createEventSchema>;
 export type UpdateEventInput = z.infer<typeof updateEventSchema>;
 export type EventParams = z.infer<typeof eventParamsSchema>;
@@ -178,3 +190,6 @@ export type CreateEventOptionsBatchInput = z.infer<
 export type UpdateEventOptionInput = z.infer<typeof updateEventOptionSchema>;
 export type EventOptionParams = z.infer<typeof eventOptionParamsSchema>;
 export type InviteParticipantsInput = z.infer<typeof inviteParticipantsSchema>;
+export type VoteParams = z.infer<typeof voteParamsSchema>;
+export type ReplaceVotesInput = z.infer<typeof replaceVotesSchema>;
+export type ResolveTieInput = z.infer<typeof resolveTieSchema>;

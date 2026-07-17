@@ -4,6 +4,8 @@ import {
   createEventOptionSchema,
   createEventSchema,
   inviteParticipantsSchema,
+  replaceVotesSchema,
+  resolveTieSchema,
   updateEventOptionSchema,
   updateEventSchema,
 } from "../src/schemas/events.schemas.js";
@@ -124,5 +126,18 @@ describe("event schemas", () => {
         emails: ["ana@example.com", " ANA@example.com "],
       }).success,
     ).toBe(false);
+  });
+
+  it("requires one or more distinct voting options", () => {
+    const optionId = "550e8400-e29b-41d4-a716-446655440000";
+
+    expect(replaceVotesSchema.parse({ optionIds: [optionId] })).toEqual({
+      optionIds: [optionId],
+    });
+    expect(replaceVotesSchema.safeParse({ optionIds: [] }).success).toBe(false);
+    expect(
+      replaceVotesSchema.safeParse({ optionIds: [optionId, optionId] }).success,
+    ).toBe(false);
+    expect(resolveTieSchema.safeParse({ optionId }).success).toBe(true);
   });
 });
