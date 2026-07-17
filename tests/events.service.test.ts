@@ -22,6 +22,13 @@ const mocks = vi.hoisted(() => ({
   createEmailLog: vi.fn(),
   markEmailLogSent: vi.fn(),
   markEmailLogFailed: vi.fn(),
+  findActiveParticipant: vi.fn(),
+  replaceVotes: vi.fn(),
+  finalizeIfDue: vi.fn(),
+  listVoteRows: vi.fn(),
+  getResult: vi.fn(),
+  listTiedOptionIds: vi.fn(),
+  resolveTie: vi.fn(),
   findProfileByUserId: vi.fn(),
   findProfilesByEmails: vi.fn(),
   sendInviteEmail: vi.fn(),
@@ -48,6 +55,13 @@ vi.mock("../src/repositories/events.repository.js", () => ({
     createEmailLog: mocks.createEmailLog,
     markEmailLogSent: mocks.markEmailLogSent,
     markEmailLogFailed: mocks.markEmailLogFailed,
+    findActiveParticipant: mocks.findActiveParticipant,
+    replaceVotes: mocks.replaceVotes,
+    finalizeIfDue: mocks.finalizeIfDue,
+    listVoteRows: mocks.listVoteRows,
+    getResult: mocks.getResult,
+    listTiedOptionIds: mocks.listTiedOptionIds,
+    resolveTie: mocks.resolveTie,
   },
 }));
 
@@ -99,6 +113,10 @@ beforeEach(() => {
   });
   mocks.findDetailAccessibleById.mockResolvedValue(adminEvent);
   mocks.hasPublishedOptions.mockResolvedValue(false);
+  mocks.findActiveParticipant.mockResolvedValue({ id: "participant-id" });
+  mocks.listVoteRows.mockResolvedValue([]);
+  mocks.getResult.mockResolvedValue(null);
+  mocks.listTiedOptionIds.mockResolvedValue([]);
 });
 
 describe("events service", () => {
@@ -381,5 +399,54 @@ describe("events service", () => {
       statusCode: 409,
       message: "Poll events require at least one option before inviting",
     });
+  });
+
+  it("replaces a participant's selected poll options and returns the voting state", async () => {
+    const event = {
+      ...adminEvent,
+      participants: [{ id: "participant-id", status: "joined" }],
+      options: [{
+        id: "option-id",
+        eventId: "event-id",
+        type: "date" as const,
+        label: null,
+        startAt: "2026-08-01T03:00:00Z",
+        endAt: null,
+        createdAt: "2026-07-06T15:00:00Z",
+        updatedAt: "2026-07-06T15:00:00Z",
+      }],
+    };
+    mocks.findDetailAccessibleById.mockResolvedValue(event);
+    mocks.listVoteRows.mockResolvedValue([
+      { participant_id: "participant-id", option_id: "option-id" },
+    ]);
+
+    await expect(
+      eventsService.replaceVotes(auth, "event-id", { optionIds: ["option-id"] }),
+    ).resolves.toMatchObject({ selectedOptionIds: ["option-id"] });
+    expect(mocks.replaceVotes).toHaveBeenCalledWith("event-id", "participant-id", ["option-id"]);
+  });
+
+  it("finalizes a due poll when its voting state is requested", async () => {
+    const dueEvent = { ...adminEvent, votingClosesAt: "2020-01-01T00:00:00Z" };
+    mocks.findDetailAccessibleById.mockResolvedValue(dueEvent);
+
+    await expect(eventsService.getVoting(auth, "event-id")).resolves.toMatchObject({
+      isOpen: false,
+    });
+    expect(mocks.finalizeIfDue).toHaveBeenCalledWith("event-id");
+  });
+
+  it("only allows an admin to resolve a pending tie", async () => {
+    mocks.getResult.mockResolvedValue({
+      status: "finalized",
+      winning_option_id: "option-id",
+      total_votes: 3,
+      decided_by: "admin",
+      decided_at: "2026-08-02T00:00:00Z",
+    });
+
+    await eventsService.resolveTie(auth, "event-id", { optionId: "option-id" });
+    expect(mocks.resolveTie).toHaveBeenCalledWith("event-id", "option-id", auth.userId);
   });
 });

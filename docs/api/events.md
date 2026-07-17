@@ -135,6 +135,7 @@ participante `removed` se reactiva como `invited`.
 
 Los grupos son privados del organizador; el backend combina sus contactos con
 los emails manuales, elimina repetidos y limita el envio a 50 destinatarios.
+Una vez finalizada una votacion, el evento ya no admite nuevas invitaciones.
 
 El backend intenta enviar emails reales con Resend y audita cada intento en
 `email_logs` usando `template = event_invitation`. El link apunta a
@@ -145,6 +146,42 @@ Variables requeridas para envio real:
 - `RESEND_API_KEY`
 - `INVITE_FROM_EMAIL`
 - `APP_PUBLIC_URL`
+
+## Votacion y resultado
+
+```text
+GET  /api/v1/events/:eventId/voting
+PUT  /api/v1/events/:eventId/votes
+POST /api/v1/events/:eventId/result/resolve-tie
+```
+
+Solo aplican a eventos `poll`. Cualquier participante activo puede consultar y
+reemplazar por completo sus opciones seleccionadas; debe enviar al menos una
+opcion perteneciente al evento. El backend permite una seleccion multiple y
+cuenta un voto por participante para cada opcion elegida.
+
+```json
+{
+  "optionIds": ["550e8400-e29b-41d4-a716-446655440000"]
+}
+```
+
+La consulta devuelve la seleccion del participante autenticado, los conteos y
+porcentajes sobre participantes activos, y el resultado si la votacion ya fue
+finalizada. Al consultar un evento cuyo cierre ya paso, el backend intenta
+finalizarlo de forma puntual. Una opcion con mas votos gana; sin votos el estado
+es `no_winner`, y un empate queda en `tie_pending`.
+
+Solo un `admin` puede resolver un empate pendiente eligiendo una de las
+opciones empatadas:
+
+```json
+{
+  "optionId": "550e8400-e29b-41d4-a716-446655440000"
+}
+```
+
+Los intentos de votar luego del cierre o de la finalizacion responden `409`.
 
 ## EventDetail
 
@@ -162,6 +199,7 @@ type EventDetail = {
   fixedStartAt: string | null;
   fixedEndAt: string | null;
   finalizedAt: string | null;
+  winningOption: EventOption | null;
   createdAt: string;
   updatedAt: string;
   options: EventOption[];

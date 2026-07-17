@@ -32,6 +32,7 @@ export type EventSummary = {
   fixedStartAt: string | null;
   fixedEndAt: string | null;
   finalizedAt: string | null;
+  winningOption: EventOption | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -98,6 +99,31 @@ export type InviteParticipantsResult = {
   emails: InviteEmailDelivery[];
 };
 
+export type EventResultStatus = "finalized" | "tie_pending" | "no_winner";
+
+export type EventResult = {
+  status: EventResultStatus;
+  winningOptionId: string | null;
+  totalVotes: number;
+  decidedBy: "system" | "admin";
+  decidedAt: string;
+};
+
+export type VotingOption = EventOption & {
+  votesCount: number;
+  availabilityPercent: number;
+};
+
+export type VotingState = {
+  isOpen: boolean;
+  votingClosesAt: string;
+  eligibleParticipants: number;
+  selectedOptionIds: string[];
+  options: VotingOption[];
+  result: EventResult | null;
+  tiedOptionIds: string[];
+};
+
 export type EventDetail = EventSummary & {
   optionsLocked: boolean;
   options: EventOption[];
@@ -121,6 +147,7 @@ export function mapEventRow(
     fixedStartAt: row.fixed_start_at,
     fixedEndAt: row.fixed_end_at,
     finalizedAt: row.finalized_at,
+    winningOption: null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
