@@ -150,11 +150,11 @@ function calculateBalances(
     if (payment.status !== "active") continue;
     balances.set(
       payment.fromParticipantId,
-      (balances.get(payment.fromParticipantId) ?? 0) - payment.amountCents,
+      (balances.get(payment.fromParticipantId) ?? 0) + payment.amountCents,
     );
     balances.set(
       payment.toParticipantId,
-      (balances.get(payment.toParticipantId) ?? 0) + payment.amountCents,
+      (balances.get(payment.toParticipantId) ?? 0) - payment.amountCents,
     );
   }
 

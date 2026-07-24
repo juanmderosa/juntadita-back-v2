@@ -62,15 +62,23 @@ describe("payments service", () => {
         ],
       },
     ]);
+    mocks.listPayments.mockResolvedValue([
+      {
+        fromParticipantId: "b",
+        toParticipantId: "a",
+        amountCents: 500,
+        status: "active",
+      },
+    ]);
     const overview = await paymentsService.getOverview(auth, "event-id");
     expect(
       overview.balances.map((item) => [item.participant.id, item.balanceCents]),
     ).toEqual([
-      ["a", 1500],
-      ["b", -1500],
+      ["a", 1000],
+      ["b", -1000],
     ]);
     expect(overview.suggestions).toEqual([
-      { fromParticipantId: "b", toParticipantId: "a", amountCents: 1500 },
+      { fromParticipantId: "b", toParticipantId: "a", amountCents: 1000 },
     ]);
   });
 
