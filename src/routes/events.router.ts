@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { eventsController } from "../controllers/events.controller.js";
 import { expensesController } from "../controllers/expenses.controller.js";
+import { paymentsController } from "../controllers/payments.controller.js";
 import { requireAuth } from "../middlewares/requireAuth.js";
 import { validate } from "../middlewares/validation.middleware.js";
 import {
@@ -30,6 +31,11 @@ import {
   listExpensesQuerySchema,
   updateExpenseSchema,
 } from "../schemas/expenses.schemas.js";
+import {
+  createPaymentSchema,
+  paymentParamsSchema,
+  voidPaymentSchema,
+} from "../schemas/payments.schemas.js";
 
 export const eventsRouter = Router();
 
@@ -68,6 +74,21 @@ eventsRouter.delete(
   "/:eventId/options/:optionId",
   validate({ params: eventOptionParamsSchema }),
   eventsController.deleteOption,
+);
+eventsRouter.get(
+  "/:eventId/payments",
+  validate({ params: eventParamsSchema }),
+  paymentsController.overview,
+);
+eventsRouter.post(
+  "/:eventId/payments",
+  validate({ params: eventParamsSchema, body: createPaymentSchema }),
+  paymentsController.create,
+);
+eventsRouter.post(
+  "/:eventId/payments/:paymentId/void",
+  validate({ params: paymentParamsSchema, body: voidPaymentSchema }),
+  paymentsController.void,
 );
 eventsRouter.get(
   "/:eventId/voting",

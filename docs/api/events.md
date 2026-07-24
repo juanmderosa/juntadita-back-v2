@@ -188,6 +188,27 @@ evento a `collecting_expenses` para corregir gastos. Conserva los pagos y el
 bloqueo permanente de invitados y participantes financieros tras el primer
 cierre. Ambos endpoints responden `SuccessResponse<EventDetail>`.
 
+## Balances y pagos
+
+```text
+GET  /api/v1/events/:eventId/payments
+POST /api/v1/events/:eventId/payments
+POST /api/v1/events/:eventId/payments/:paymentId/void
+```
+
+Todo participante ve balances netos, sugerencias deterministas e historial. Un
+balance positivo recibe dinero y uno negativo debe pagarlo. Solo se registran
+pagos con `payments_enabled`; un participante con cuenta registra pagos propios
+como origen y el admin puede registrar pagos de invitados sin cuenta.
+
+```json
+{ "fromParticipantId": "uuid", "toParticipantId": "uuid", "amountCents": 12500, "paidAt": "2026-08-01T23:00:00-03:00", "note": "Transferencia" }
+```
+
+Los pagos se anulan, no se editan ni se borran. El creador o admin envía
+`{ "voidReason": "Importe incorrecto" }`; la anulación conserva el historial
+y deja de afectar balances.
+
 ## Gastos
 
 ```text
