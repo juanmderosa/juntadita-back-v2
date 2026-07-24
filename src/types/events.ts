@@ -67,6 +67,7 @@ export type EventParticipantRow = {
   display_name: string | null;
   role: EventParticipantRole;
   status: EventParticipantStatus;
+  participates_in_expenses: boolean;
   invited_by: string | null;
   created_at: string;
   updated_at: string;
@@ -80,6 +81,7 @@ export type EventParticipant = {
   displayName: string | null;
   role: EventParticipantRole;
   status: EventParticipantStatus;
+  participatesInExpenses: boolean;
   invitedBy: string | null;
   createdAt: string;
   updatedAt: string;
@@ -177,6 +179,7 @@ export function mapEventParticipantRow(
     displayName: row.display_name,
     role: row.role,
     status: row.status,
+    participatesInExpenses: row.participates_in_expenses,
     invitedBy: row.invited_by,
     createdAt: row.created_at,
     updatedAt: row.updated_at,

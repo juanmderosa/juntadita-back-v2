@@ -6,6 +6,7 @@ import {
   inviteParticipantsSchema,
   replaceVotesSchema,
   resolveTieSchema,
+  updateExpenseParticipationSchema,
   updateEventOptionSchema,
   updateEventSchema,
 } from "../src/schemas/events.schemas.js";
@@ -139,5 +140,15 @@ describe("event schemas", () => {
       replaceVotesSchema.safeParse({ optionIds: [optionId, optionId] }).success,
     ).toBe(false);
     expect(resolveTieSchema.safeParse({ optionId }).success).toBe(true);
+  });
+
+  it("validates expense participation updates", () => {
+    expect(
+      updateExpenseParticipationSchema.parse({ participatesInExpenses: false }),
+    ).toEqual({ participatesInExpenses: false });
+    expect(updateExpenseParticipationSchema.safeParse({}).success).toBe(false);
+    expect(
+      updateExpenseParticipationSchema.safeParse({ participatesInExpenses: true, extra: true }).success,
+    ).toBe(false);
   });
 });

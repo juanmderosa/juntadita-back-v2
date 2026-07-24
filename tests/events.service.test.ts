@@ -16,6 +16,8 @@ const mocks = vi.hoisted(() => ({
   hasPublishedOptions: vi.fn(),
   listOptions: vi.fn(),
   listParticipants: vi.fn(),
+  findParticipantById: vi.fn(),
+  setExpenseParticipation: vi.fn(),
   findParticipantsByEmails: vi.fn(),
   createParticipant: vi.fn(),
   updateParticipantInvitation: vi.fn(),
@@ -49,6 +51,8 @@ vi.mock("../src/repositories/events.repository.js", () => ({
     hasPublishedOptions: mocks.hasPublishedOptions,
     listOptions: mocks.listOptions,
     listParticipants: mocks.listParticipants,
+    findParticipantById: mocks.findParticipantById,
+    setExpenseParticipation: mocks.setExpenseParticipation,
     findParticipantsByEmails: mocks.findParticipantsByEmails,
     createParticipant: mocks.createParticipant,
     updateParticipantInvitation: mocks.updateParticipantInvitation,
@@ -117,6 +121,19 @@ beforeEach(() => {
   mocks.listVoteRows.mockResolvedValue([]);
   mocks.getResult.mockResolvedValue(null);
   mocks.listTiedOptionIds.mockResolvedValue([]);
+  mocks.findParticipantById.mockResolvedValue({
+    id: "participant-id",
+    eventId: "event-id",
+    userId: null,
+    email: "ana@example.com",
+    displayName: null,
+    role: "guest",
+    status: "invited",
+    participatesInExpenses: false,
+    invitedBy: auth.userId,
+    createdAt: "2026-07-06T15:00:00Z",
+    updatedAt: "2026-07-06T15:00:00Z",
+  });
 });
 
 describe("events service", () => {
@@ -398,6 +415,44 @@ describe("events service", () => {
     ).rejects.toMatchObject({
       statusCode: 409,
       message: "Poll events require at least one option before inviting",
+    });
+  });
+
+  it("lets an admin update a participant's expense participation", async () => {
+    mocks.setExpenseParticipation.mockResolvedValue({ status: "updated" });
+
+    await expect(
+      eventsService.updateExpenseParticipation(auth, "event-id", "participant-id", {
+        participatesInExpenses: false,
+      }),
+    ).resolves.toMatchObject({ participatesInExpenses: false });
+
+    expect(mocks.setExpenseParticipation).toHaveBeenCalledWith(
+      "event-id",
+      "participant-id",
+      false,
+    );
+  });
+
+  it("rejects expense participation exclusions after payments or with sole splits", async () => {
+    mocks.setExpenseParticipation.mockResolvedValueOnce({ status: "payments_exist" });
+    await expect(
+      eventsService.updateExpenseParticipation(auth, "event-id", "participant-id", {
+        participatesInExpenses: false,
+      }),
+    ).rejects.toMatchObject({ statusCode: 409 });
+
+    mocks.setExpenseParticipation.mockResolvedValueOnce({
+      status: "sole_splits",
+      expenses: [{ id: "expense-id", title: "Cena" }],
+    });
+    await expect(
+      eventsService.updateExpenseParticipation(auth, "event-id", "participant-id", {
+        participatesInExpenses: false,
+      }),
+    ).rejects.toMatchObject({
+      statusCode: 409,
+      errors: [{ field: "expenses.expense-id", message: "Cena" }],
     });
   });
 
