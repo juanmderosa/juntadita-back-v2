@@ -9,6 +9,14 @@ const mocks = vi.hoisted(() => ({
   create: vi.fn(),
   update: vi.fn(),
   delete: vi.fn(),
+  countAttachments: vi.fn(),
+  listAttachments: vi.fn(),
+  uploadAttachment: vi.fn(),
+  createAttachment: vi.fn(),
+  findAttachment: vi.fn(),
+  removeAttachments: vi.fn(),
+  deleteAttachment: vi.fn(),
+  createAttachmentSignedUrl: vi.fn(),
 }));
 
 vi.mock("../src/services/events.service.js", () => ({
@@ -22,6 +30,14 @@ vi.mock("../src/repositories/expenses.repository.js", () => ({
     create: mocks.create,
     update: mocks.update,
     delete: mocks.delete,
+    countAttachments: mocks.countAttachments,
+    listAttachments: mocks.listAttachments,
+    uploadAttachment: mocks.uploadAttachment,
+    createAttachment: mocks.createAttachment,
+    findAttachment: mocks.findAttachment,
+    removeAttachments: mocks.removeAttachments,
+    deleteAttachment: mocks.deleteAttachment,
+    createAttachmentSignedUrl: mocks.createAttachmentSignedUrl,
   },
 }));
 
@@ -71,6 +87,9 @@ beforeEach(() => {
   vi.clearAllMocks();
   mocks.getEventById.mockResolvedValue(event);
   mocks.create.mockResolvedValue("expense-id");
+  mocks.countAttachments.mockResolvedValue(0);
+  mocks.listAttachments.mockResolvedValue([]);
+  mocks.createAttachment.mockResolvedValue({ id: "attachment-id", fileName: "ticket.pdf" });
   mocks.findById.mockResolvedValue({
     id: "expense-id",
     createdByUserId: auth.userId,
@@ -135,5 +154,58 @@ describe("expenses service", () => {
     };
     await expect(expensesService.update(auth, "event-id", "expense-id", input)).rejects.toMatchObject({ statusCode: 403 });
     await expect(expensesService.delete(auth, "event-id", "expense-id")).rejects.toMatchObject({ statusCode: 403 });
+  });
+
+  it("uploads one attachment and removes the storage object if metadata fails", async () => {
+    const file = {
+      buffer: Buffer.from("receipt"),
+      originalname: "ticket.pdf",
+      mimetype: "application/pdf",
+      size: 7,
+    } as Express.Multer.File;
+
+    await expect(
+      expensesService.uploadAttachment(auth, "event-id", "expense-id", file),
+    ).resolves.toMatchObject({ id: "attachment-id" });
+    expect(mocks.uploadAttachment).toHaveBeenCalledWith(
+      expect.stringMatching(/^event-id\/expense-id\/.+\.pdf$/),
+      file.buffer,
+      "application/pdf",
+    );
+
+    mocks.createAttachment.mockRejectedValueOnce(new Error("metadata failed"));
+    await expect(
+      expensesService.uploadAttachment(auth, "event-id", "expense-id", file),
+    ).rejects.toThrow("metadata failed");
+    expect(mocks.removeAttachments).toHaveBeenCalledWith([
+      expect.stringMatching(/^event-id\/expense-id\/.+\.pdf$/),
+    ]);
+  });
+
+  it("limits attachments and only creates signed download URLs for event participants", async () => {
+    const file = {
+      buffer: Buffer.from("receipt"),
+      originalname: "ticket.pdf",
+      mimetype: "application/pdf",
+      size: 7,
+    } as Express.Multer.File;
+    mocks.countAttachments.mockResolvedValueOnce(5);
+    await expect(
+      expensesService.uploadAttachment(auth, "event-id", "expense-id", file),
+    ).rejects.toMatchObject({ statusCode: 400 });
+
+    mocks.findAttachment.mockResolvedValue({
+      id: "attachment-id",
+      storagePath: "event-id/expense-id/file.pdf",
+    });
+    mocks.createAttachmentSignedUrl.mockResolvedValue("https://signed.example/file.pdf");
+    await expect(
+      expensesService.getAttachmentDownloadUrl(
+        auth,
+        "event-id",
+        "expense-id",
+        "attachment-id",
+      ),
+    ).resolves.toMatchObject({ url: "https://signed.example/file.pdf" });
   });
 });

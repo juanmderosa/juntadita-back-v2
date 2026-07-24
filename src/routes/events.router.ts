@@ -4,6 +4,10 @@ import { expensesController } from "../controllers/expenses.controller.js";
 import { requireAuth } from "../middlewares/requireAuth.js";
 import { validate } from "../middlewares/validation.middleware.js";
 import {
+  requireExpenseAttachment,
+  uploadExpenseAttachment,
+} from "../middlewares/expenseAttachmentUpload.js";
+import {
   createEventOptionsBatchSchema,
   createEventOptionSchema,
   createEventSchema,
@@ -21,6 +25,7 @@ import {
 } from "../schemas/events.schemas.js";
 import {
   createExpenseSchema,
+  expenseAttachmentParamsSchema,
   expenseParamsSchema,
   listExpensesQuerySchema,
   updateExpenseSchema,
@@ -101,6 +106,23 @@ eventsRouter.delete(
   "/:eventId/expenses/:expenseId",
   validate({ params: expenseParamsSchema }),
   expensesController.delete,
+);
+eventsRouter.post(
+  "/:eventId/expenses/:expenseId/attachments",
+  validate({ params: expenseParamsSchema }),
+  uploadExpenseAttachment,
+  requireExpenseAttachment,
+  expensesController.uploadAttachment,
+);
+eventsRouter.get(
+  "/:eventId/expenses/:expenseId/attachments/:attachmentId/download",
+  validate({ params: expenseAttachmentParamsSchema }),
+  expensesController.getAttachmentDownloadUrl,
+);
+eventsRouter.delete(
+  "/:eventId/expenses/:expenseId/attachments/:attachmentId",
+  validate({ params: expenseAttachmentParamsSchema }),
+  expensesController.deleteAttachment,
 );
 eventsRouter.get(
   "/:eventId",

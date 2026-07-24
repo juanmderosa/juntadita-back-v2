@@ -6,6 +6,7 @@ import {
 import { expensesService } from "../services/expenses.service.js";
 import type {
   CreateExpenseInput,
+  ExpenseAttachmentParams,
   ExpenseParams,
   ListExpensesQuery,
   UpdateExpenseInput,
@@ -104,6 +105,60 @@ export const expensesController = {
         res.locals.auth,
         res.locals.params.eventId,
         res.locals.params.expenseId,
+      );
+      res.json(successResponse(result));
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  async uploadAttachment(
+    _req: Request,
+    res: ExpensesResponse<{ params: ExpenseParams; file: Express.Multer.File }>,
+    next: NextFunction,
+  ) {
+    try {
+      const attachment = await expensesService.uploadAttachment(
+        res.locals.auth,
+        res.locals.params.eventId,
+        res.locals.params.expenseId,
+        res.locals.file,
+      );
+      res.status(201).json(successResponse(attachment));
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  async getAttachmentDownloadUrl(
+    _req: Request,
+    res: ExpensesResponse<{ params: ExpenseAttachmentParams }>,
+    next: NextFunction,
+  ) {
+    try {
+      const result = await expensesService.getAttachmentDownloadUrl(
+        res.locals.auth,
+        res.locals.params.eventId,
+        res.locals.params.expenseId,
+        res.locals.params.attachmentId,
+      );
+      res.json(successResponse(result));
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  async deleteAttachment(
+    _req: Request,
+    res: ExpensesResponse<{ params: ExpenseAttachmentParams }>,
+    next: NextFunction,
+  ) {
+    try {
+      const result = await expensesService.deleteAttachment(
+        res.locals.auth,
+        res.locals.params.eventId,
+        res.locals.params.expenseId,
+        res.locals.params.attachmentId,
       );
       res.json(successResponse(result));
     } catch (error) {

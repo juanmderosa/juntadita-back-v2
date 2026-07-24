@@ -63,9 +63,13 @@ export const expenseParamsSchema = z.object({
   eventId: uuidSchema,
   expenseId: uuidSchema,
 });
+export const expenseAttachmentParamsSchema = expenseParamsSchema.extend({
+  attachmentId: uuidSchema,
+});
 export const listExpensesQuerySchema = paginationQuerySchema;
 
 export type CreateExpenseInput = z.infer<typeof createExpenseSchema>;
 export type UpdateExpenseInput = z.infer<typeof updateExpenseSchema>;
 export type ExpenseParams = z.infer<typeof expenseParamsSchema>;
+export type ExpenseAttachmentParams = z.infer<typeof expenseAttachmentParamsSchema>;
 export type ListExpensesQuery = z.infer<typeof listExpensesQuerySchema>;

@@ -225,6 +225,25 @@ activo; los splits deben pertenecer a participantes financieros habilitados,
 ser positivos y sumar exactamente `amountCents`. En division igual, los
 centavos sobrantes se asignan de forma determinista por `participantId`.
 
+## Comprobantes de gastos
+
+```text
+POST   /api/v1/events/:eventId/expenses/:expenseId/attachments
+GET    /api/v1/events/:eventId/expenses/:expenseId/attachments/:attachmentId/download
+DELETE /api/v1/events/:eventId/expenses/:expenseId/attachments/:attachmentId
+```
+
+Todos los participantes pueden cargar un comprobante y solicitar su descarga.
+La carga usa `multipart/form-data` con un único campo `file`; se puede repetir
+la operación para cada archivo y así reintentar uno que falle. Solo el creador
+del gasto o el admin puede eliminar un comprobante.
+
+Se permiten hasta cinco comprobantes por gasto, de hasta 10 MB cada uno. Los
+tipos admitidos son PNG, JPEG, WebP y PDF. Los archivos se guardan en el bucket
+privado `expense-attachments`; la descarga responde una URL firmada válida por
+60 segundos. Las respuestas de gastos incluyen `attachments` con los metadatos
+del archivo, pero nunca una URL pública persistente.
+
 ## Votacion y resultado
 
 ```text
