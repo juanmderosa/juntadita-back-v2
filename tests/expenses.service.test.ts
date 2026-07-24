@@ -75,12 +75,21 @@ const event = {
   fixedStartAt: "2026-08-01T20:00:00Z",
   fixedEndAt: null,
   finalizedAt: null,
+  financialStatus: "collecting_expenses",
+  financialStateChangedAt: "2026-07-17T00:00:00Z",
+  financialStateChangedBy: null,
+  financialParticipantsLockedAt: null,
   winningOption: null,
   createdAt: "2026-07-17T00:00:00Z",
   updatedAt: "2026-07-17T00:00:00Z",
   optionsLocked: false,
   options: [],
-  participants: [participant("payer"), participant("a"), participant("b"), participant("excluded", false)],
+  participants: [
+    participant("payer"),
+    participant("a"),
+    participant("b"),
+    participant("excluded", false),
+  ],
 } satisfies EventDetail;
 
 beforeEach(() => {
@@ -89,7 +98,10 @@ beforeEach(() => {
   mocks.create.mockResolvedValue("expense-id");
   mocks.countAttachments.mockResolvedValue(0);
   mocks.listAttachments.mockResolvedValue([]);
-  mocks.createAttachment.mockResolvedValue({ id: "attachment-id", fileName: "ticket.pdf" });
+  mocks.createAttachment.mockResolvedValue({
+    id: "attachment-id",
+    fileName: "ticket.pdf",
+  });
   mocks.findById.mockResolvedValue({
     id: "expense-id",
     createdByUserId: auth.userId,
@@ -107,12 +119,14 @@ describe("expenses service", () => {
       participantIds: ["b", "a"],
     });
 
-    expect(mocks.create).toHaveBeenCalledWith(expect.objectContaining({
-      splits: [
-        { participantId: "a", amountCents: 51 },
-        { participantId: "b", amountCents: 50 },
-      ],
-    }));
+    expect(mocks.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        splits: [
+          { participantId: "a", amountCents: 51 },
+          { participantId: "b", amountCents: 50 },
+        ],
+      }),
+    );
   });
 
   it("rejects excluded participants and custom splits with an invalid total", async () => {
@@ -140,10 +154,29 @@ describe("expenses service", () => {
     });
   });
 
+  it("blocks expense mutations while payments are enabled", async () => {
+    mocks.getEventById.mockResolvedValue({
+      ...event,
+      financialStatus: "payments_enabled",
+    });
+    await expect(
+      expensesService.create(auth, "event-id", {
+        paidByParticipantId: "payer",
+        title: "Cena",
+        amountCents: 100,
+        splitMethod: "equal",
+        participantIds: ["a"],
+      }),
+    ).rejects.toMatchObject({ statusCode: 409 });
+  });
+
   it("only lets an expense creator or admin update and delete", async () => {
     const guestEvent = { ...event, currentUserRole: "guest" as const };
     mocks.getEventById.mockResolvedValue(guestEvent);
-    mocks.findById.mockResolvedValue({ id: "expense-id", createdByUserId: "other-user" });
+    mocks.findById.mockResolvedValue({
+      id: "expense-id",
+      createdByUserId: "other-user",
+    });
 
     const input = {
       paidByParticipantId: "payer",
@@ -152,8 +185,12 @@ describe("expenses service", () => {
       splitMethod: "equal" as const,
       participantIds: ["a"],
     };
-    await expect(expensesService.update(auth, "event-id", "expense-id", input)).rejects.toMatchObject({ statusCode: 403 });
-    await expect(expensesService.delete(auth, "event-id", "expense-id")).rejects.toMatchObject({ statusCode: 403 });
+    await expect(
+      expensesService.update(auth, "event-id", "expense-id", input),
+    ).rejects.toMatchObject({ statusCode: 403 });
+    await expect(
+      expensesService.delete(auth, "event-id", "expense-id"),
+    ).rejects.toMatchObject({ statusCode: 403 });
   });
 
   it("uploads one attachment and removes the storage object if metadata fails", async () => {
@@ -198,7 +235,9 @@ describe("expenses service", () => {
       id: "attachment-id",
       storagePath: "event-id/expense-id/file.pdf",
     });
-    mocks.createAttachmentSignedUrl.mockResolvedValue("https://signed.example/file.pdf");
+    mocks.createAttachmentSignedUrl.mockResolvedValue(
+      "https://signed.example/file.pdf",
+    );
     await expect(
       expensesService.getAttachmentDownloadUrl(
         auth,

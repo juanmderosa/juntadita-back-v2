@@ -32,8 +32,9 @@ type EventMembershipRow = {
 type EventResultWinnerRow = { event_id: string; winning_option_id: string };
 
 const eventSelect =
-  "id,created_by,title,description,type,currency_code,timezone,voting_closes_at,fixed_start_at,fixed_end_at,finalized_at,created_at,updated_at";
-const optionSelect = "id,event_id,type,label,start_at,end_at,created_at,updated_at";
+  "id,created_by,title,description,type,currency_code,timezone,voting_closes_at,fixed_start_at,fixed_end_at,finalized_at,financial_status,financial_state_changed_at,financial_state_changed_by,financial_participants_locked_at,created_at,updated_at";
+const optionSelect =
+  "id,event_id,type,label,start_at,end_at,created_at,updated_at";
 const participantSelect =
   "id,event_id,user_id,email,display_name,role,status,participates_in_expenses,invited_by,created_at,updated_at";
 
@@ -88,9 +89,9 @@ export const eventsRepository = {
 
     const total = count ?? 0;
     const summaries = (data ?? []).flatMap((membership) => {
-        const event = getNestedEvent(membership.events);
-        return event ? [mapEventRow(event, membership.role)] : [];
-      });
+      const event = getNestedEvent(membership.events);
+      return event ? [mapEventRow(event, membership.role)] : [];
+    });
     const summariesWithWinner = await addWinningOptions(summaries);
     return {
       data: summariesWithWinner,
@@ -312,7 +313,11 @@ export const eventsRepository = {
     return data ? mapEventParticipantRow(data) : null;
   },
 
-  async replaceVotes(eventId: string, participantId: string, optionIds: string[]) {
+  async replaceVotes(
+    eventId: string,
+    participantId: string,
+    optionIds: string[],
+  ) {
     const { error } = await getSupabaseAdmin().rpc("replace_poll_votes", {
       p_event_id: eventId,
       p_participant_id: participantId,
@@ -322,9 +327,12 @@ export const eventsRepository = {
   },
 
   async finalizeIfDue(eventId: string) {
-    const { error } = await getSupabaseAdmin().rpc("finalize_poll_event_if_due", {
-      p_event_id: eventId,
-    });
+    const { error } = await getSupabaseAdmin().rpc(
+      "finalize_poll_event_if_due",
+      {
+        p_event_id: eventId,
+      },
+    );
     if (error) throw error;
   },
 
@@ -385,6 +393,22 @@ export const eventsRepository = {
 
     if (error) throw error;
     return (data ?? []).map(mapEventParticipantRow);
+  },
+
+  async setFinancialStatus(
+    eventId: string,
+    userId: string,
+    financialStatus: "collecting_expenses" | "payments_enabled",
+  ) {
+    const { data, error } = await getSupabaseAdmin()
+      .rpc("set_event_financial_status", {
+        p_event_id: eventId,
+        p_changed_by: userId,
+        p_financial_status: financialStatus,
+      })
+      .single<EventRow>();
+    if (error) throw error;
+    return data;
   },
 
   async findParticipantById(eventId: string, participantId: string) {
@@ -473,7 +497,8 @@ export const eventsRepository = {
     } = { invited_by: input.invitedBy };
 
     if (input.userId !== undefined) updates.user_id = input.userId;
-    if (input.displayName !== undefined) updates.display_name = input.displayName;
+    if (input.displayName !== undefined)
+      updates.display_name = input.displayName;
     if (input.status !== undefined) updates.status = input.status;
 
     const { data, error } = await getSupabaseAdmin()
@@ -535,7 +560,11 @@ export const eventsRepository = {
 };
 
 type ExpenseParticipationUpdateResult = {
-  status: "updated" | "participant_not_found" | "payments_exist" | "sole_splits";
+  status:
+    | "updated"
+    | "participant_not_found"
+    | "payments_exist"
+    | "sole_splits";
   expenses?: Array<{ id: string; title: string }>;
 };
 
@@ -544,7 +573,10 @@ async function addWinningOptions(events: EventSummary[]) {
   const { data: resultRows, error: resultsError } = await getSupabaseAdmin()
     .from("event_results")
     .select("event_id,winning_option_id")
-    .in("event_id", events.map((event) => event.id))
+    .in(
+      "event_id",
+      events.map((event) => event.id),
+    )
     .eq("status", "finalized")
     .not("winning_option_id", "is", null)
     .overrideTypes<EventResultWinnerRow[]>();
@@ -557,7 +589,14 @@ async function addWinningOptions(events: EventSummary[]) {
     .in("id", optionIds)
     .overrideTypes<EventOptionRow[]>();
   if (optionsError) throw optionsError;
-  const optionsById = new Map((optionRows ?? []).map((row) => [row.id, mapEventOptionRow(row)]));
-  const winnerIdByEvent = new Map((resultRows ?? []).map((row) => [row.event_id, row.winning_option_id]));
-  return events.map((event) => ({ ...event, winningOption: optionsById.get(winnerIdByEvent.get(event.id) ?? "") ?? null }));
+  const optionsById = new Map(
+    (optionRows ?? []).map((row) => [row.id, mapEventOptionRow(row)]),
+  );
+  const winnerIdByEvent = new Map(
+    (resultRows ?? []).map((row) => [row.event_id, row.winning_option_id]),
+  );
+  return events.map((event) => ({
+    ...event,
+    winningOption: optionsById.get(winnerIdByEvent.get(event.id) ?? "") ?? null,
+  }));
 }
