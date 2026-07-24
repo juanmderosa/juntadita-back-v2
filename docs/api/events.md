@@ -121,6 +121,8 @@ Crear franja:
 GET /api/v1/events/:eventId/participants
 POST /api/v1/events/:eventId/participants/invite
 PATCH /api/v1/events/:eventId/participants/:participantId/expense-participation
+POST /api/v1/events/:eventId/financial-status/enable-payments
+POST /api/v1/events/:eventId/financial-status/reopen-expenses
 ```
 
 Participantes pueden listar invitados visibles. Solo `admin` puede invitar por
@@ -172,6 +174,19 @@ ultimo caso `errors` enumera los gastos que el admin debe ajustar primero.
 
 Rehabilitar a un participante solo afecta gastos nuevos, no modifica splits
 historicos.
+
+## Cierre financiero
+
+Solo el admin puede habilitar pagos o reabrir gastos. `POST
+/api/v1/events/:eventId/financial-status/enable-payments` valida que cada gasto
+tenga splits de participantes financieros activos y cambia el evento a
+`payments_enabled`. En ese estado no se permiten invitaciones, cambios de
+participación financiera ni mutaciones de gastos o comprobantes.
+
+`POST /api/v1/events/:eventId/financial-status/reopen-expenses` devuelve el
+evento a `collecting_expenses` para corregir gastos. Conserva los pagos y el
+bloqueo permanente de invitados y participantes financieros tras el primer
+cierre. Ambos endpoints responden `SuccessResponse<EventDetail>`.
 
 ## Gastos
 

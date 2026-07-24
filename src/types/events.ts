@@ -1,4 +1,5 @@
 export type EventType = "poll" | "fixed";
+export type EventFinancialStatus = "collecting_expenses" | "payments_enabled";
 export type EventParticipantRole = "admin" | "guest";
 export type EventParticipantStatus = "invited" | "joined" | "removed";
 export type EventOptionType = "date" | "datetime" | "range";
@@ -15,6 +16,10 @@ export type EventRow = {
   fixed_start_at: string | null;
   fixed_end_at: string | null;
   finalized_at: string | null;
+  financial_status: EventFinancialStatus;
+  financial_state_changed_at: string;
+  financial_state_changed_by: string | null;
+  financial_participants_locked_at: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -32,6 +37,10 @@ export type EventSummary = {
   fixedStartAt: string | null;
   fixedEndAt: string | null;
   finalizedAt: string | null;
+  financialStatus: EventFinancialStatus;
+  financialStateChangedAt: string;
+  financialStateChangedBy: string | null;
+  financialParticipantsLockedAt: string | null;
   winningOption: EventOption | null;
   createdAt: string;
   updatedAt: string;
@@ -149,6 +158,10 @@ export function mapEventRow(
     fixedStartAt: row.fixed_start_at,
     fixedEndAt: row.fixed_end_at,
     finalizedAt: row.finalized_at,
+    financialStatus: row.financial_status,
+    financialStateChangedAt: row.financial_state_changed_at,
+    financialStateChangedBy: row.financial_state_changed_by,
+    financialParticipantsLockedAt: row.financial_participants_locked_at,
     winningOption: null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
