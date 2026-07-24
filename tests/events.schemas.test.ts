@@ -103,12 +103,8 @@ describe("event schemas", () => {
       startAt: "2026-08-01T00:00:00-03:00",
     };
 
-    expect(
-      createEventOptionsBatchSchema.safeParse({ options: [option] }).success,
-    ).toBe(true);
-    expect(
-      createEventOptionsBatchSchema.safeParse({ options: [] }).success,
-    ).toBe(false);
+    expect(createEventOptionsBatchSchema.safeParse({ options: [option] }).success).toBe(true);
+    expect(createEventOptionsBatchSchema.safeParse({ options: [] }).success).toBe(false);
     expect(
       createEventOptionsBatchSchema.safeParse({
         options: Array.from({ length: 61 }, () => option),
@@ -136,19 +132,18 @@ describe("event schemas", () => {
       optionIds: [optionId],
     });
     expect(replaceVotesSchema.safeParse({ optionIds: [] }).success).toBe(false);
-    expect(
-      replaceVotesSchema.safeParse({ optionIds: [optionId, optionId] }).success,
-    ).toBe(false);
+    expect(replaceVotesSchema.safeParse({ optionIds: [optionId, optionId] }).success).toBe(false);
     expect(resolveTieSchema.safeParse({ optionId }).success).toBe(true);
   });
 
   it("validates expense participation updates", () => {
-    expect(
-      updateExpenseParticipationSchema.parse({ participatesInExpenses: false }),
-    ).toEqual({ participatesInExpenses: false });
+    expect(updateExpenseParticipationSchema.parse({ participatesInExpenses: false })).toEqual({
+      participatesInExpenses: false,
+    });
     expect(updateExpenseParticipationSchema.safeParse({}).success).toBe(false);
     expect(
-      updateExpenseParticipationSchema.safeParse({ participatesInExpenses: true, extra: true }).success,
+      updateExpenseParticipationSchema.safeParse({ participatesInExpenses: true, extra: true })
+        .success,
     ).toBe(false);
   });
 });

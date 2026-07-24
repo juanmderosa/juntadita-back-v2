@@ -1,8 +1,5 @@
 import { getSupabaseAdmin } from "../config/supabase.js";
-import {
-  mapEventParticipantRow,
-  type EventParticipantRow,
-} from "../types/events.js";
+import { mapEventParticipantRow, type EventParticipantRow } from "../types/events.js";
 import { numericToCents } from "../types/expenses.js";
 import type { Payment, PaymentRow } from "../types/payments.js";
 
@@ -81,9 +78,7 @@ export const paymentsRepository = {
 async function hydrate(eventId: string, rows: PaymentRow[]) {
   if (rows.length === 0) return [];
   const participantIds = [
-    ...new Set(
-      rows.flatMap((row) => [row.from_participant_id, row.to_participant_id]),
-    ),
+    ...new Set(rows.flatMap((row) => [row.from_participant_id, row.to_participant_id])),
   ];
 
   const { data, error } = await getSupabaseAdmin()
@@ -94,9 +89,7 @@ async function hydrate(eventId: string, rows: PaymentRow[]) {
     .overrideTypes<EventParticipantRow[]>();
 
   if (error) throw error;
-  const participants = new Map(
-    (data ?? []).map((row) => [row.id, mapEventParticipantRow(row)]),
-  );
+  const participants = new Map((data ?? []).map((row) => [row.id, mapEventParticipantRow(row)]));
 
   return rows.map((row) => {
     const fromParticipant = participants.get(row.from_participant_id);

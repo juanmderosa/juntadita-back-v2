@@ -4,12 +4,7 @@ import { ZodError } from "zod";
 import { errorResponse } from "../helpers/response.helpers.js";
 import { HttpError } from "../types/httpError.js";
 
-export function errorHandler(
-  err: unknown,
-  _req: Request,
-  res: Response,
-  _next: NextFunction,
-) {
+export function errorHandler(err: unknown, _req: Request, res: Response, _next: NextFunction) {
   console.error(err);
 
   if (err instanceof HttpError) {

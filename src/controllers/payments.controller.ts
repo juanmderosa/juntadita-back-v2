@@ -9,10 +9,7 @@ import type {
 } from "../schemas/payments.schemas.js";
 
 import type { EventParams } from "../schemas/events.schemas.js";
-type PaymentsResponse<T extends object = object> = Response<
-  unknown,
-  AuthLocals & T
->;
+type PaymentsResponse<T extends object = object> = Response<unknown, AuthLocals & T>;
 
 export const paymentsController = {
   async overview(
@@ -23,10 +20,7 @@ export const paymentsController = {
     try {
       res.json(
         successResponse(
-          await paymentsService.getOverview(
-            res.locals.auth,
-            res.locals.params.eventId,
-          ),
+          await paymentsService.getOverview(res.locals.auth, res.locals.params.eventId),
         ),
       );
     } catch (error) {

@@ -26,10 +26,7 @@ vi.mock("../src/repositories/expenses.repository.js", () => ({
 import { paymentsService } from "../src/services/payments.service.js";
 
 const auth = { userId: "user-a", email: "a@example.com" } as AuthContext;
-const participant = (
-  id: string,
-  userId: string | null = id === "a" ? "user-a" : "user-b",
-) => ({
+const participant = (id: string, userId: string | null = id === "a" ? "user-a" : "user-b") => ({
   id,
   userId,
   email: `${id}@example.com`,
@@ -62,15 +59,21 @@ describe("payments service", () => {
         ],
       },
     ]);
+    mocks.listPayments.mockResolvedValue([
+      {
+        fromParticipantId: "b",
+        toParticipantId: "a",
+        amountCents: 500,
+        status: "active",
+      },
+    ]);
     const overview = await paymentsService.getOverview(auth, "event-id");
-    expect(
-      overview.balances.map((item) => [item.participant.id, item.balanceCents]),
-    ).toEqual([
-      ["a", 1500],
-      ["b", -1500],
+    expect(overview.balances.map((item) => [item.participant.id, item.balanceCents])).toEqual([
+      ["a", 1000],
+      ["b", -1000],
     ]);
     expect(overview.suggestions).toEqual([
-      { fromParticipantId: "b", toParticipantId: "a", amountCents: 1500 },
+      { fromParticipantId: "b", toParticipantId: "a", amountCents: 1000 },
     ]);
   });
 
@@ -117,10 +120,6 @@ describe("payments service", () => {
         voidReason: "Duplicado",
       }),
     ).resolves.toMatchObject({ status: "voided" });
-    expect(mocks.void).toHaveBeenCalledWith(
-      "payment-id",
-      auth.userId,
-      "Duplicado",
-    );
+    expect(mocks.void).toHaveBeenCalledWith("payment-id", auth.userId, "Duplicado");
   });
 });

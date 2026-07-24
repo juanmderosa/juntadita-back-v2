@@ -26,10 +26,7 @@ export const paginatedResponse = <T>(
   pagination,
 });
 
-export const errorResponse = (
-  message: string,
-  errors?: ErrorItem[],
-): ErrorResponse => ({
+export const errorResponse = (message: string, errors?: ErrorItem[]): ErrorResponse => ({
   status: "error",
   message,
   ...(errors ? { errors } : {}),

@@ -188,9 +188,9 @@ describe("expenses service", () => {
     await expect(
       expensesService.update(auth, "event-id", "expense-id", input),
     ).rejects.toMatchObject({ statusCode: 403 });
-    await expect(
-      expensesService.delete(auth, "event-id", "expense-id"),
-    ).rejects.toMatchObject({ statusCode: 403 });
+    await expect(expensesService.delete(auth, "event-id", "expense-id")).rejects.toMatchObject({
+      statusCode: 403,
+    });
   });
 
   it("uploads one attachment and removes the storage object if metadata fails", async () => {
@@ -235,16 +235,9 @@ describe("expenses service", () => {
       id: "attachment-id",
       storagePath: "event-id/expense-id/file.pdf",
     });
-    mocks.createAttachmentSignedUrl.mockResolvedValue(
-      "https://signed.example/file.pdf",
-    );
+    mocks.createAttachmentSignedUrl.mockResolvedValue("https://signed.example/file.pdf");
     await expect(
-      expensesService.getAttachmentDownloadUrl(
-        auth,
-        "event-id",
-        "expense-id",
-        "attachment-id",
-      ),
+      expensesService.getAttachmentDownloadUrl(auth, "event-id", "expense-id", "attachment-id"),
     ).resolves.toMatchObject({ url: "https://signed.example/file.pdf" });
   });
 });

@@ -13,26 +13,14 @@ import {
 export const groupsRouter = Router();
 groupsRouter.use(requireAuth);
 groupsRouter.get("/", groupsController.list);
-groupsRouter.post(
-  "/",
-  validate({ body: createGroupSchema }),
-  groupsController.create,
-);
-groupsRouter.get(
-  "/:groupId",
-  validate({ params: groupParamsSchema }),
-  groupsController.getById,
-);
+groupsRouter.post("/", validate({ body: createGroupSchema }), groupsController.create);
+groupsRouter.get("/:groupId", validate({ params: groupParamsSchema }), groupsController.getById);
 groupsRouter.patch(
   "/:groupId",
   validate({ params: groupParamsSchema, body: updateGroupSchema }),
   groupsController.update,
 );
-groupsRouter.delete(
-  "/:groupId",
-  validate({ params: groupParamsSchema }),
-  groupsController.delete,
-);
+groupsRouter.delete("/:groupId", validate({ params: groupParamsSchema }), groupsController.delete);
 groupsRouter.post(
   "/:groupId/members",
   validate({ params: groupParamsSchema, body: addGroupMembersSchema }),

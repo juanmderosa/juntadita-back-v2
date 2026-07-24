@@ -40,16 +40,8 @@ import {
 export const eventsRouter = Router();
 
 eventsRouter.use(requireAuth);
-eventsRouter.post(
-  "/",
-  validate({ body: createEventSchema }),
-  eventsController.create,
-);
-eventsRouter.get(
-  "/",
-  validate({ query: listEventsQuerySchema }),
-  eventsController.list,
-);
+eventsRouter.post("/", validate({ body: createEventSchema }), eventsController.create);
+eventsRouter.get("/", validate({ query: listEventsQuerySchema }), eventsController.list);
 eventsRouter.get(
   "/:eventId/options",
   validate({ params: eventParamsSchema }),
@@ -175,11 +167,7 @@ eventsRouter.delete(
   validate({ params: expenseAttachmentParamsSchema }),
   expensesController.deleteAttachment,
 );
-eventsRouter.get(
-  "/:eventId",
-  validate({ params: eventParamsSchema }),
-  eventsController.getById,
-);
+eventsRouter.get("/:eventId", validate({ params: eventParamsSchema }), eventsController.getById);
 eventsRouter.patch(
   "/:eventId",
   validate({ params: eventParamsSchema, body: updateEventSchema }),

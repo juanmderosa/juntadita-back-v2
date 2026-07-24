@@ -202,7 +202,13 @@ pagos con `payments_enabled`; un participante con cuenta registra pagos propios
 como origen y el admin puede registrar pagos de invitados sin cuenta.
 
 ```json
-{ "fromParticipantId": "uuid", "toParticipantId": "uuid", "amountCents": 12500, "paidAt": "2026-08-01T23:00:00-03:00", "note": "Transferencia" }
+{
+  "fromParticipantId": "uuid",
+  "toParticipantId": "uuid",
+  "amountCents": 12500,
+  "paidAt": "2026-08-01T23:00:00-03:00",
+  "note": "Transferencia"
+}
 ```
 
 Los pagos se anulan, no se editan ni se borran. El creador o admin envía
@@ -233,10 +239,7 @@ Division igual entre participantes financieros habilitados:
   "amountCents": 12500,
   "spentAt": "2026-08-01T23:00:00-03:00",
   "splitMethod": "equal",
-  "participantIds": [
-    "550e8400-e29b-41d4-a716-446655440010",
-    "550e8400-e29b-41d4-a716-446655440011"
-  ]
+  "participantIds": ["550e8400-e29b-41d4-a716-446655440010", "550e8400-e29b-41d4-a716-446655440011"]
 }
 ```
 
