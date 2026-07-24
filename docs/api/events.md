@@ -120,6 +120,7 @@ Crear franja:
 ```text
 GET /api/v1/events/:eventId/participants
 POST /api/v1/events/:eventId/participants/invite
+PATCH /api/v1/events/:eventId/participants/:participantId/expense-participation
 ```
 
 Participantes pueden listar invitados visibles. Solo `admin` puede invitar por
@@ -146,6 +147,102 @@ Variables requeridas para envio real:
 - `RESEND_API_KEY`
 - `INVITE_FROM_EMAIL`
 - `APP_PUBLIC_URL`
+
+## Participacion en gastos
+
+```text
+PATCH /api/v1/events/:eventId/participants/:participantId/expense-participation
+```
+
+Solo un participante `admin` puede cambiar si otro participante activo forma
+parte de los repartos de gastos. Todos comienzan con
+`participatesInExpenses: true`, incluidos invitados sin cuenta.
+
+```json
+{
+  "participatesInExpenses": false
+}
+```
+
+Al excluir a un participante, el backend recalcula en una transaccion todos
+sus splits historicos: los repartos iguales se vuelven a dividir y los
+personalizados se redistribuyen proporcionalmente. La operacion responde `409`
+si ya existen pagos o si algun gasto quedaria sin ningun participante; en este
+ultimo caso `errors` enumera los gastos que el admin debe ajustar primero.
+
+Rehabilitar a un participante solo afecta gastos nuevos, no modifica splits
+historicos.
+
+## Gastos
+
+```text
+GET    /api/v1/events/:eventId/expenses?page=1&limit=20
+POST   /api/v1/events/:eventId/expenses
+GET    /api/v1/events/:eventId/expenses/:expenseId
+PATCH  /api/v1/events/:eventId/expenses/:expenseId
+DELETE /api/v1/events/:eventId/expenses/:expenseId
+```
+
+Todo participante del evento puede listar, consultar y crear gastos. Solo el
+creador del gasto o el admin puede editarlo o eliminarlo. Los importes se
+envian y responden en centavos enteros; la moneda se toma del evento.
+
+Division igual entre participantes financieros habilitados:
+
+```json
+{
+  "paidByParticipantId": "550e8400-e29b-41d4-a716-446655440010",
+  "title": "Cena",
+  "description": "Parrilla y bebidas",
+  "amountCents": 12500,
+  "spentAt": "2026-08-01T23:00:00-03:00",
+  "splitMethod": "equal",
+  "participantIds": [
+    "550e8400-e29b-41d4-a716-446655440010",
+    "550e8400-e29b-41d4-a716-446655440011"
+  ]
+}
+```
+
+Division personalizada:
+
+```json
+{
+  "paidByParticipantId": "550e8400-e29b-41d4-a716-446655440010",
+  "title": "Alquiler",
+  "amountCents": 30000,
+  "splitMethod": "custom",
+  "splits": [
+    { "participantId": "550e8400-e29b-41d4-a716-446655440010", "amountCents": 10000 },
+    { "participantId": "550e8400-e29b-41d4-a716-446655440011", "amountCents": 20000 }
+  ]
+}
+```
+
+`PATCH` recibe el mismo payload completo que `POST` y reemplaza los datos y
+splits del gasto en una unica transaccion. El pagador debe ser un participante
+activo; los splits deben pertenecer a participantes financieros habilitados,
+ser positivos y sumar exactamente `amountCents`. En division igual, los
+centavos sobrantes se asignan de forma determinista por `participantId`.
+
+## Comprobantes de gastos
+
+```text
+POST   /api/v1/events/:eventId/expenses/:expenseId/attachments
+GET    /api/v1/events/:eventId/expenses/:expenseId/attachments/:attachmentId/download
+DELETE /api/v1/events/:eventId/expenses/:expenseId/attachments/:attachmentId
+```
+
+Todos los participantes pueden cargar un comprobante y solicitar su descarga.
+La carga usa `multipart/form-data` con un único campo `file`; se puede repetir
+la operación para cada archivo y así reintentar uno que falle. Solo el creador
+del gasto o el admin puede eliminar un comprobante.
+
+Se permiten hasta cinco comprobantes por gasto, de hasta 10 MB cada uno. Los
+tipos admitidos son PNG, JPEG, WebP y PDF. Los archivos se guardan en el bucket
+privado `expense-attachments`; la descarga responde una URL firmada válida por
+60 segundos. Las respuestas de gastos incluyen `attachments` con los metadatos
+del archivo, pero nunca una URL pública persistente.
 
 ## Votacion y resultado
 

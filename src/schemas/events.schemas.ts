@@ -75,6 +75,10 @@ export const updateEventSchema = z
   );
 
 export const eventParamsSchema = z.object({ eventId: uuidSchema });
+export const eventParticipantParamsSchema = z.object({
+  eventId: uuidSchema,
+  participantId: uuidSchema,
+});
 export const listEventsQuerySchema = paginationQuerySchema;
 
 const optionLabelSchema = z
@@ -178,10 +182,14 @@ export const replaceVotesSchema = z
   })
   .strict();
 export const resolveTieSchema = z.object({ optionId: uuidSchema }).strict();
+export const updateExpenseParticipationSchema = z
+  .object({ participatesInExpenses: z.boolean() })
+  .strict();
 
 export type CreateEventInput = z.infer<typeof createEventSchema>;
 export type UpdateEventInput = z.infer<typeof updateEventSchema>;
 export type EventParams = z.infer<typeof eventParamsSchema>;
+export type EventParticipantParams = z.infer<typeof eventParticipantParamsSchema>;
 export type ListEventsQuery = z.infer<typeof listEventsQuerySchema>;
 export type CreateEventOptionInput = z.infer<typeof createEventOptionSchema>;
 export type CreateEventOptionsBatchInput = z.infer<
@@ -193,3 +201,6 @@ export type InviteParticipantsInput = z.infer<typeof inviteParticipantsSchema>;
 export type VoteParams = z.infer<typeof voteParamsSchema>;
 export type ReplaceVotesInput = z.infer<typeof replaceVotesSchema>;
 export type ResolveTieInput = z.infer<typeof resolveTieSchema>;
+export type UpdateExpenseParticipationInput = z.infer<
+  typeof updateExpenseParticipationSchema
+>;

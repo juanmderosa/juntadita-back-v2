@@ -5,6 +5,7 @@ import type {
   CreateEventOptionInput,
   CreateEventInput,
   EventOptionParams,
+  EventParticipantParams,
   EventParams,
   InviteParticipantsInput,
   ReplaceVotesInput,
@@ -13,6 +14,7 @@ import type {
   ListEventsQuery,
   UpdateEventOptionInput,
   UpdateEventInput,
+  UpdateExpenseParticipationInput,
 } from "../schemas/events.schemas.js";
 import { eventsService } from "../services/events.service.js";
 import type { AuthLocals } from "../types/auth.js";
@@ -211,6 +213,27 @@ export const eventsController = {
         res.locals.body,
       );
       res.json(successResponse(result));
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  async updateExpenseParticipation(
+    _req: Request,
+    res: EventsResponse<{
+      params: EventParticipantParams;
+      body: UpdateExpenseParticipationInput;
+    }>,
+    next: NextFunction,
+  ) {
+    try {
+      const participant = await eventsService.updateExpenseParticipation(
+        res.locals.auth,
+        res.locals.params.eventId,
+        res.locals.params.participantId,
+        res.locals.body,
+      );
+      res.json(successResponse(participant));
     } catch (error) {
       next(error);
     }
