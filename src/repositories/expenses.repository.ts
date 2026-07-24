@@ -24,6 +24,17 @@ const attachmentSelect =
 const expenseAttachmentsBucket = "expense-attachments";
 
 export const expensesRepository = {
+  async listAllByEvent(eventId: string): Promise<Expense[]> {
+    const { data, error } = await getSupabaseAdmin()
+      .from("expenses")
+      .select(expenseSelect)
+      .eq("event_id", eventId)
+      .order("spent_at", { ascending: false })
+      .overrideTypes<ExpenseRow[]>();
+    if (error) throw error;
+    return hydrateExpenses(eventId, data ?? []);
+  },
+
   async listByEvent(
     eventId: string,
     page: number,
@@ -193,7 +204,9 @@ export const expensesRepository = {
 
   async findAttachment(expenseId: string, attachmentId: string) {
     const attachments = await this.listAttachments([expenseId]);
-    return attachments.find((attachment) => attachment.id === attachmentId) ?? null;
+    return (
+      attachments.find((attachment) => attachment.id === attachmentId) ?? null
+    );
   },
 
   async deleteAttachment(expenseId: string, attachmentId: string) {
@@ -205,10 +218,13 @@ export const expensesRepository = {
     if (error) throw error;
   },
 
-  async uploadAttachment(storagePath: string, file: Buffer, contentType: string) {
+  async uploadAttachment(
+    storagePath: string,
+    file: Buffer,
+    contentType: string,
+  ) {
     const { error } = await getSupabaseAdmin()
-      .storage
-      .from(expenseAttachmentsBucket)
+      .storage.from(expenseAttachmentsBucket)
       .upload(storagePath, file, { contentType, upsert: false });
     if (error) throw error;
   },
@@ -216,16 +232,14 @@ export const expensesRepository = {
   async removeAttachments(storagePaths: string[]) {
     if (storagePaths.length === 0) return;
     const { error } = await getSupabaseAdmin()
-      .storage
-      .from(expenseAttachmentsBucket)
+      .storage.from(expenseAttachmentsBucket)
       .remove(storagePaths);
     if (error) throw error;
   },
 
   async createAttachmentSignedUrl(storagePath: string) {
     const { data, error } = await getSupabaseAdmin()
-      .storage
-      .from(expenseAttachmentsBucket)
+      .storage.from(expenseAttachmentsBucket)
       .createSignedUrl(storagePath, 60);
     if (error) throw error;
     return data.signedUrl;
@@ -265,9 +279,14 @@ async function hydrateExpenses(eventId: string, expenseRows: ExpenseRow[]) {
     splits.push(split);
     splitsByExpenseId.set(split.expense_id, splits);
   }
-  const attachmentsByExpenseId = new Map<string, Array<ExpenseAttachment & { storagePath: string }>>();
+  const attachmentsByExpenseId = new Map<
+    string,
+    Array<ExpenseAttachment & { storagePath: string }>
+  >();
+
   for (const attachment of attachments) {
-    const expenseAttachments = attachmentsByExpenseId.get(attachment.expenseId) ?? [];
+    const expenseAttachments =
+      attachmentsByExpenseId.get(attachment.expenseId) ?? [];
     expenseAttachments.push(attachment);
     attachmentsByExpenseId.set(attachment.expenseId, expenseAttachments);
   }
@@ -315,6 +334,8 @@ function mapExpenseRow(
         participant,
       };
     }),
-    attachments: attachments.map(({ storagePath: _storagePath, ...attachment }) => attachment),
+    attachments: attachments.map(
+      ({ storagePath: _storagePath, ...attachment }) => attachment,
+    ),
   };
 }
