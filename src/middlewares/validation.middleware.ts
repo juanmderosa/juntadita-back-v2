@@ -8,8 +8,7 @@ type ValidationSchemas = {
 };
 
 export const validate =
-  (schemas: ValidationSchemas) =>
-  (req: Request, res: Response, next: NextFunction) => {
+  (schemas: ValidationSchemas) => (req: Request, res: Response, next: NextFunction) => {
     try {
       if (schemas.body) res.locals.body = schemas.body.parse(req.body);
       if (schemas.params) res.locals.params = schemas.params.parse(req.params);

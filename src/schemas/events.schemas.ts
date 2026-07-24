@@ -47,8 +47,7 @@ const fixedEventSchema = z
   .superRefine((value, context) => {
     if (
       value.fixedEndAt &&
-      new Date(value.fixedEndAt).getTime() <=
-        new Date(value.fixedStartAt).getTime()
+      new Date(value.fixedEndAt).getTime() <= new Date(value.fixedStartAt).getTime()
     ) {
       context.addIssue({
         code: "custom",
@@ -58,10 +57,7 @@ const fixedEventSchema = z
     }
   });
 
-export const createEventSchema = z.discriminatedUnion("type", [
-  pollEventSchema,
-  fixedEventSchema,
-]);
+export const createEventSchema = z.discriminatedUnion("type", [pollEventSchema, fixedEventSchema]);
 
 export const updateEventSchema = z
   .object({
@@ -88,41 +84,36 @@ const optionLabelSchema = z
   .nullable()
   .optional();
 
-export const createEventOptionSchema = z
-  .discriminatedUnion("type", [
-    z
-      .object({
-        type: z.literal("date"),
-        label: optionLabelSchema,
-        startAt: isoDateTimeSchema,
-        endAt: z.never().optional(),
-      })
-      .strict(),
-    z
-      .object({
-        type: z.literal("datetime"),
-        label: optionLabelSchema,
-        startAt: isoDateTimeSchema,
-        endAt: z.never().optional(),
-      })
-      .strict(),
-    z
-      .object({
-        type: z.literal("range"),
-        label: optionLabelSchema,
-        startAt: isoDateTimeSchema,
-        endAt: isoDateTimeSchema,
-      })
-      .strict()
-      .refine(
-        (value) =>
-          new Date(value.endAt).getTime() > new Date(value.startAt).getTime(),
-        {
-          path: ["endAt"],
-          message: "Option end must be after start",
-        },
-      ),
-  ]);
+export const createEventOptionSchema = z.discriminatedUnion("type", [
+  z
+    .object({
+      type: z.literal("date"),
+      label: optionLabelSchema,
+      startAt: isoDateTimeSchema,
+      endAt: z.never().optional(),
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("datetime"),
+      label: optionLabelSchema,
+      startAt: isoDateTimeSchema,
+      endAt: z.never().optional(),
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("range"),
+      label: optionLabelSchema,
+      startAt: isoDateTimeSchema,
+      endAt: isoDateTimeSchema,
+    })
+    .strict()
+    .refine((value) => new Date(value.endAt).getTime() > new Date(value.startAt).getTime(), {
+      path: ["endAt"],
+      message: "Option end must be after start",
+    }),
+]);
 
 export const createEventOptionsBatchSchema = z
   .object({
@@ -142,9 +133,7 @@ export const updateEventOptionSchema = z
   .strict()
   .refine(
     (value) =>
-      value.label !== undefined ||
-      value.startAt !== undefined ||
-      value.endAt !== undefined,
+      value.label !== undefined || value.startAt !== undefined || value.endAt !== undefined,
     "At least one option field is required",
   );
 
@@ -162,10 +151,10 @@ export const inviteParticipantsSchema = z
     groupIds: z.array(uuidSchema).max(50, "At most 50 groups can be selected").optional(),
   })
   .strict()
-  .refine(
-    (value) => !value.emails || new Set(value.emails).size === value.emails.length,
-    { path: ["emails"], message: "Emails must be unique" },
-  )
+  .refine((value) => !value.emails || new Set(value.emails).size === value.emails.length, {
+    path: ["emails"],
+    message: "Emails must be unique",
+  })
   .refine(
     (value) => (value.emails?.length ?? 0) > 0 || (value.groupIds?.length ?? 0) > 0,
     "At least one email or group is required",
@@ -178,7 +167,10 @@ export const replaceVotesSchema = z
       .array(uuidSchema)
       .min(1, "At least one option is required")
       .max(60, "At most 60 options can be selected")
-      .refine((optionIds) => new Set(optionIds).size === optionIds.length, "Options must be unique"),
+      .refine(
+        (optionIds) => new Set(optionIds).size === optionIds.length,
+        "Options must be unique",
+      ),
   })
   .strict();
 export const resolveTieSchema = z.object({ optionId: uuidSchema }).strict();
@@ -192,15 +184,11 @@ export type EventParams = z.infer<typeof eventParamsSchema>;
 export type EventParticipantParams = z.infer<typeof eventParticipantParamsSchema>;
 export type ListEventsQuery = z.infer<typeof listEventsQuerySchema>;
 export type CreateEventOptionInput = z.infer<typeof createEventOptionSchema>;
-export type CreateEventOptionsBatchInput = z.infer<
-  typeof createEventOptionsBatchSchema
->;
+export type CreateEventOptionsBatchInput = z.infer<typeof createEventOptionsBatchSchema>;
 export type UpdateEventOptionInput = z.infer<typeof updateEventOptionSchema>;
 export type EventOptionParams = z.infer<typeof eventOptionParamsSchema>;
 export type InviteParticipantsInput = z.infer<typeof inviteParticipantsSchema>;
 export type VoteParams = z.infer<typeof voteParamsSchema>;
 export type ReplaceVotesInput = z.infer<typeof replaceVotesSchema>;
 export type ResolveTieInput = z.infer<typeof resolveTieSchema>;
-export type UpdateExpenseParticipationInput = z.infer<
-  typeof updateExpenseParticipationSchema
->;
+export type UpdateExpenseParticipationInput = z.infer<typeof updateExpenseParticipationSchema>;

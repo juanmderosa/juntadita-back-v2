@@ -10,10 +10,7 @@ import type {
 import { groupsService } from "../services/groups.service.js";
 import type { AuthLocals } from "../types/auth.js";
 
-type GroupsResponse<T extends object = object> = Response<
-  unknown,
-  AuthLocals & T
->;
+type GroupsResponse<T extends object = object> = Response<unknown, AuthLocals & T>;
 
 export const groupsController = {
   async list(_req: Request, res: GroupsResponse, next: NextFunction) {
@@ -23,37 +20,20 @@ export const groupsController = {
       next(error);
     }
   },
-  async getById(
-    _req: Request,
-    res: GroupsResponse<{ params: GroupParams }>,
-    next: NextFunction,
-  ) {
+  async getById(_req: Request, res: GroupsResponse<{ params: GroupParams }>, next: NextFunction) {
     try {
       res.json(
-        successResponse(
-          await groupsService.getById(
-            res.locals.auth,
-            res.locals.params.groupId,
-          ),
-        ),
+        successResponse(await groupsService.getById(res.locals.auth, res.locals.params.groupId)),
       );
     } catch (error) {
       next(error);
     }
   },
-  async create(
-    _req: Request,
-    res: GroupsResponse<{ body: CreateGroupInput }>,
-    next: NextFunction,
-  ) {
+  async create(_req: Request, res: GroupsResponse<{ body: CreateGroupInput }>, next: NextFunction) {
     try {
       res
         .status(201)
-        .json(
-          successResponse(
-            await groupsService.create(res.locals.auth, res.locals.body),
-          ),
-        );
+        .json(successResponse(await groupsService.create(res.locals.auth, res.locals.body)));
     } catch (error) {
       next(error);
     }
@@ -66,30 +46,17 @@ export const groupsController = {
     try {
       res.json(
         successResponse(
-          await groupsService.update(
-            res.locals.auth,
-            res.locals.params.groupId,
-            res.locals.body,
-          ),
+          await groupsService.update(res.locals.auth, res.locals.params.groupId, res.locals.body),
         ),
       );
     } catch (error) {
       next(error);
     }
   },
-  async delete(
-    _req: Request,
-    res: GroupsResponse<{ params: GroupParams }>,
-    next: NextFunction,
-  ) {
+  async delete(_req: Request, res: GroupsResponse<{ params: GroupParams }>, next: NextFunction) {
     try {
       res.json(
-        successResponse(
-          await groupsService.delete(
-            res.locals.auth,
-            res.locals.params.groupId,
-          ),
-        ),
+        successResponse(await groupsService.delete(res.locals.auth, res.locals.params.groupId)),
       );
     } catch (error) {
       next(error);

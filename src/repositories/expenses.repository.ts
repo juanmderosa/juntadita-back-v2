@@ -24,11 +24,18 @@ const attachmentSelect =
 const expenseAttachmentsBucket = "expense-attachments";
 
 export const expensesRepository = {
-  async listByEvent(
-    eventId: string,
-    page: number,
-    limit: number,
-  ): Promise<PaginatedData<Expense>> {
+  async listAllByEvent(eventId: string): Promise<Expense[]> {
+    const { data, error } = await getSupabaseAdmin()
+      .from("expenses")
+      .select(expenseSelect)
+      .eq("event_id", eventId)
+      .order("spent_at", { ascending: false })
+      .overrideTypes<ExpenseRow[]>();
+    if (error) throw error;
+    return hydrateExpenses(eventId, data ?? []);
+  },
+
+  async listByEvent(eventId: string, page: number, limit: number): Promise<PaginatedData<Expense>> {
     const from = (page - 1) * limit;
     const to = from + limit - 1;
     const { data, error, count } = await getSupabaseAdmin()
@@ -207,8 +214,7 @@ export const expensesRepository = {
 
   async uploadAttachment(storagePath: string, file: Buffer, contentType: string) {
     const { error } = await getSupabaseAdmin()
-      .storage
-      .from(expenseAttachmentsBucket)
+      .storage.from(expenseAttachmentsBucket)
       .upload(storagePath, file, { contentType, upsert: false });
     if (error) throw error;
   },
@@ -216,16 +222,14 @@ export const expensesRepository = {
   async removeAttachments(storagePaths: string[]) {
     if (storagePaths.length === 0) return;
     const { error } = await getSupabaseAdmin()
-      .storage
-      .from(expenseAttachmentsBucket)
+      .storage.from(expenseAttachmentsBucket)
       .remove(storagePaths);
     if (error) throw error;
   },
 
   async createAttachmentSignedUrl(storagePath: string) {
     const { data, error } = await getSupabaseAdmin()
-      .storage
-      .from(expenseAttachmentsBucket)
+      .storage.from(expenseAttachmentsBucket)
       .createSignedUrl(storagePath, 60);
     if (error) throw error;
     return data.signedUrl;
@@ -244,16 +248,14 @@ async function hydrateExpenses(eventId: string, expenseRows: ExpenseRow[]) {
   const attachments = await expensesRepository.listAttachments(expenseIds);
 
   const participantIds = new Set<string>();
-  for (const expense of expenseRows)
-    participantIds.add(expense.paid_by_participant_id);
+  for (const expense of expenseRows) participantIds.add(expense.paid_by_participant_id);
   for (const split of splitRows ?? []) participantIds.add(split.participant_id);
-  const { data: participantRows, error: participantsError } =
-    await getSupabaseAdmin()
-      .from("event_participants")
-      .select(participantSelect)
-      .eq("event_id", eventId)
-      .in("id", [...participantIds])
-      .overrideTypes<EventParticipantRow[]>();
+  const { data: participantRows, error: participantsError } = await getSupabaseAdmin()
+    .from("event_participants")
+    .select(participantSelect)
+    .eq("event_id", eventId)
+    .in("id", [...participantIds])
+    .overrideTypes<EventParticipantRow[]>();
   if (participantsError) throw participantsError;
 
   const participantsById = new Map(
@@ -265,7 +267,11 @@ async function hydrateExpenses(eventId: string, expenseRows: ExpenseRow[]) {
     splits.push(split);
     splitsByExpenseId.set(split.expense_id, splits);
   }
-  const attachmentsByExpenseId = new Map<string, Array<ExpenseAttachment & { storagePath: string }>>();
+  const attachmentsByExpenseId = new Map<
+    string,
+    Array<ExpenseAttachment & { storagePath: string }>
+  >();
+
   for (const attachment of attachments) {
     const expenseAttachments = attachmentsByExpenseId.get(attachment.expenseId) ?? [];
     expenseAttachments.push(attachment);
@@ -307,8 +313,7 @@ function mapExpenseRow(
     updatedAt: row.updated_at,
     splits: splitRows.map((split) => {
       const participant = participantsById.get(split.participant_id);
-      if (!participant)
-        throw new Error("Expense split participant is missing from the event");
+      if (!participant) throw new Error("Expense split participant is missing from the event");
       return {
         participantId: split.participant_id,
         amountCents: numericToCents(split.amount),

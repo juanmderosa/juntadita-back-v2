@@ -17,6 +17,8 @@ Express 5 + TypeScript ESM + Supabase service role + Zod + pnpm.
 pnpm dev
 pnpm build
 pnpm test
+pnpm format
+pnpm format:check
 pnpm start
 ```
 

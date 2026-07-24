@@ -141,10 +141,7 @@ export type EventDetail = EventSummary & {
   participants: EventParticipant[];
 };
 
-export function mapEventRow(
-  row: EventRow,
-  currentUserRole: EventParticipantRole,
-): EventSummary {
+export function mapEventRow(row: EventRow, currentUserRole: EventParticipantRole): EventSummary {
   return {
     id: row.id,
     createdBy: row.created_by,
@@ -181,9 +178,7 @@ export function mapEventOptionRow(row: EventOptionRow): EventOption {
   };
 }
 
-export function mapEventParticipantRow(
-  row: EventParticipantRow,
-): EventParticipant {
+export function mapEventParticipantRow(row: EventParticipantRow): EventParticipant {
   return {
     id: row.id,
     eventId: row.event_id,

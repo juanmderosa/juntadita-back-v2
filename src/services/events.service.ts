@@ -54,12 +54,7 @@ export const eventsService = {
 
   async list(auth: AuthContext, page: number, limit: number) {
     const identity = await getEventIdentity(auth);
-    return eventsRepository.listForUser(
-      identity.userId,
-      identity.email,
-      page,
-      limit,
-    );
+    return eventsRepository.listForUser(identity.userId, identity.email, page, limit);
   },
 
   async getById(auth: AuthContext, eventId: string) {
@@ -81,11 +76,7 @@ export const eventsService = {
       throw new HttpError("Only event admins can edit this event", 403);
     }
 
-    const updated = await eventsRepository.updateBasicData(
-      eventId,
-      input,
-      event.currentUserRole,
-    );
+    const updated = await eventsRepository.updateBasicData(eventId, input, event.currentUserRole);
     return {
       ...updated,
       optionsLocked: event.optionsLocked,
@@ -99,11 +90,7 @@ export const eventsService = {
     return eventsRepository.listOptions(eventId);
   },
 
-  async createOption(
-    auth: AuthContext,
-    eventId: string,
-    input: CreateEventOptionInput,
-  ) {
+  async createOption(auth: AuthContext, eventId: string, input: CreateEventOptionInput) {
     const event = await requireEditablePollEvent(auth, eventId);
     void event;
     return eventsRepository.createOption(eventId, input);
@@ -164,49 +151,30 @@ export const eventsService = {
     return eventsRepository.listParticipants(eventId);
   },
 
-  async inviteParticipants(
-    auth: AuthContext,
-    eventId: string,
-    input: InviteParticipantsInput,
-  ) {
+  async inviteParticipants(auth: AuthContext, eventId: string, input: InviteParticipantsInput) {
     const event = await requireAdminEvent(auth, eventId);
     ensureFinancialParticipantsAreEditable(event);
     if (event.finalizedAt) {
-      throw new HttpError(
-        "Finalized events do not allow more invitations",
-        409,
-      );
+      throw new HttpError("Finalized events do not allow more invitations", 409);
     }
     if (event.type === "poll" && event.options.length === 0) {
-      throw new HttpError(
-        "Poll events require at least one option before inviting",
-        409,
-      );
+      throw new HttpError("Poll events require at least one option before inviting", 409);
     }
 
     const manualEmails = input.emails ?? [];
     const groupIds = [...new Set(input.groupIds ?? [])];
-    const groupResult = await groupsRepository.getEmailsForOwnedGroups(
-      auth.userId,
-      groupIds,
-    );
+    const groupResult = await groupsRepository.getEmailsForOwnedGroups(auth.userId, groupIds);
     if (groupResult.foundGroupIds.length !== groupIds.length) {
       throw new HttpError("Group not found", 404);
     }
     const emails = [...new Set([...manualEmails, ...groupResult.emails])];
-    if (emails.length === 0)
-      throw new HttpError("Selected groups have no contacts", 400);
+    if (emails.length === 0) throw new HttpError("Selected groups have no contacts", 400);
     if (emails.length > 50)
       throw new HttpError("At most 50 recipients can be invited at once", 400);
 
     const profiles = await usersRepository.findProfilesByEmails(emails);
-    const profileByEmail = new Map(
-      profiles.map((profile) => [profile.email, profile]),
-    );
-    const existing = await eventsRepository.findParticipantsByEmails(
-      eventId,
-      emails,
-    );
+    const profileByEmail = new Map(profiles.map((profile) => [profile.email, profile]));
+    const existing = await eventsRepository.findParticipantsByEmails(eventId, emails);
     const existingByEmail = new Map(
       existing.map((participant) => [participant.email, participant]),
     );
@@ -236,16 +204,12 @@ export const eventsService = {
         const nextStatus = shouldReactivate ? "invited" : participant.status;
         savedParticipant =
           shouldReactivate || shouldAttachProfile
-            ? await eventsRepository.updateParticipantInvitation(
-                participant.id,
-                {
-                  userId: participant.userId ?? profile?.id ?? null,
-                  displayName:
-                    participant.displayName ?? profile?.displayName ?? null,
-                  status: nextStatus === "removed" ? "invited" : nextStatus,
-                  invitedBy: auth.userId,
-                },
-              )
+            ? await eventsRepository.updateParticipantInvitation(participant.id, {
+                userId: participant.userId ?? profile?.id ?? null,
+                displayName: participant.displayName ?? profile?.displayName ?? null,
+                status: nextStatus === "removed" ? "invited" : nextStatus,
+                invitedBy: auth.userId,
+              })
             : participant;
         shouldSendEmail = shouldReactivate;
       }
@@ -262,9 +226,7 @@ export const eventsService = {
         continue;
       }
 
-      emailResults.push(
-        await sendAndLogInviteEmail(eventId, email, event.title),
-      );
+      emailResults.push(await sendAndLogInviteEmail(eventId, email, event.title));
     }
 
     return { participants, emails: emailResults };
@@ -289,10 +251,7 @@ export const eventsService = {
     }
 
     if (result.status === "payments_exist") {
-      throw new HttpError(
-        "Expense participation cannot change after payments are recorded",
-        409,
-      );
+      throw new HttpError("Expense participation cannot change after payments are recorded", 409);
     }
 
     if (result.status === "sole_splits") {
@@ -306,10 +265,7 @@ export const eventsService = {
       );
     }
 
-    const participant = await eventsRepository.findParticipantById(
-      eventId,
-      participantId,
-    );
+    const participant = await eventsRepository.findParticipantById(eventId, participantId);
     if (!participant) throw new HttpError("Event participant not found", 404);
     return participant;
   },
@@ -320,16 +276,9 @@ export const eventsService = {
       throw new HttpError("Payments are already enabled", 409);
     }
     try {
-      await eventsRepository.setFinancialStatus(
-        eventId,
-        auth.userId,
-        "payments_enabled",
-      );
+      await eventsRepository.setFinancialStatus(eventId, auth.userId, "payments_enabled");
     } catch (error) {
-      if (
-        error instanceof Error &&
-        error.message.includes("Expenses must have valid")
-      ) {
+      if (error instanceof Error && error.message.includes("Expenses must have valid")) {
         throw new HttpError(
           "Every expense must have active financial participants before enabling payments",
           409,
@@ -345,19 +294,11 @@ export const eventsService = {
     if (event.financialStatus !== "payments_enabled") {
       throw new HttpError("Expenses are already open", 409);
     }
-    await eventsRepository.setFinancialStatus(
-      eventId,
-      auth.userId,
-      "collecting_expenses",
-    );
+    await eventsRepository.setFinancialStatus(eventId, auth.userId, "collecting_expenses");
     return this.getById(auth, eventId);
   },
 
-  async replaceVotes(
-    auth: AuthContext,
-    eventId: string,
-    input: ReplaceVotesInput,
-  ) {
+  async replaceVotes(auth: AuthContext, eventId: string, input: ReplaceVotesInput) {
     const identity = await getEventIdentity(auth);
     const event = await this.getById(auth, eventId);
     ensureVotingIsOpen(event);
@@ -371,11 +312,7 @@ export const eventsService = {
       identity.email,
     );
     if (!participant) throw new HttpError("Event participant not found", 404);
-    await eventsRepository.replaceVotes(
-      eventId,
-      participant.id,
-      input.optionIds,
-    );
+    await eventsRepository.replaceVotes(eventId, participant.id, input.optionIds);
     return this.getVoting(auth, eventId);
   },
 
@@ -385,10 +322,7 @@ export const eventsService = {
     if (event.type !== "poll" || !event.votingClosesAt) {
       throw new HttpError("Only poll events support voting", 400);
     }
-    if (
-      !event.finalizedAt &&
-      new Date(event.votingClosesAt).getTime() <= Date.now()
-    ) {
+    if (!event.finalizedAt && new Date(event.votingClosesAt).getTime() <= Date.now()) {
       await eventsRepository.finalizeIfDue(eventId);
       event = await this.getById(auth, eventId);
     }
@@ -409,20 +343,14 @@ export const eventsService = {
     const votesByOption = new Map<string, number>();
     const selectedOptionIds: string[] = [];
     for (const row of voteRows) {
-      votesByOption.set(
-        row.option_id,
-        (votesByOption.get(row.option_id) ?? 0) + 1,
-      );
-      if (row.participant_id === participant.id)
-        selectedOptionIds.push(row.option_id);
+      votesByOption.set(row.option_id, (votesByOption.get(row.option_id) ?? 0) + 1);
+      if (row.participant_id === participant.id) selectedOptionIds.push(row.option_id);
     }
     const eligibleParticipants = event.participants.filter(
       (item) => item.status !== "removed",
     ).length;
     return {
-      isOpen:
-        !event.finalizedAt &&
-        new Date(event.votingClosesAt).getTime() > Date.now(),
+      isOpen: !event.finalizedAt && new Date(event.votingClosesAt).getTime() > Date.now(),
       votingClosesAt: event.votingClosesAt,
       eligibleParticipants,
       selectedOptionIds,
@@ -432,9 +360,7 @@ export const eventsService = {
           ...option,
           votesCount,
           availabilityPercent:
-            eligibleParticipants === 0
-              ? 0
-              : Math.round((votesCount / eligibleParticipants) * 100),
+            eligibleParticipants === 0 ? 0 : Math.round((votesCount / eligibleParticipants) * 100),
         };
       }),
       result: resultRow
@@ -452,8 +378,7 @@ export const eventsService = {
 
   async resolveTie(auth: AuthContext, eventId: string, input: ResolveTieInput) {
     const event = await requireAdminEvent(auth, eventId);
-    if (event.type !== "poll")
-      throw new HttpError("Only poll events support voting", 400);
+    if (event.type !== "poll") throw new HttpError("Only poll events support voting", 400);
     await eventsRepository.resolveTie(eventId, input.optionId, auth.userId);
     return this.getVoting(auth, eventId);
   },
@@ -480,18 +405,12 @@ async function requireEditablePollEvent(auth: AuthContext, eventId: string) {
     throw new HttpError("Finalized events cannot be changed", 409);
   }
 
-  if (
-    event.votingClosesAt &&
-    new Date(event.votingClosesAt).getTime() <= Date.now()
-  ) {
+  if (event.votingClosesAt && new Date(event.votingClosesAt).getTime() <= Date.now()) {
     throw new HttpError("Voting is already closed", 409);
   }
 
   if (await eventsRepository.hasPublishedOptions(eventId)) {
-    throw new HttpError(
-      "Event options are locked after invitations or votes",
-      409,
-    );
+    throw new HttpError("Event options are locked after invitations or votes", 409);
   }
 
   return event;
@@ -499,16 +418,12 @@ async function requireEditablePollEvent(auth: AuthContext, eventId: string) {
 
 function ensureFinancialParticipantsAreEditable(event: EventDetail) {
   if (event.financialParticipantsLockedAt) {
-    throw new HttpError(
-      "Financially closed events do not allow changing participants",
-      409,
-    );
+    throw new HttpError("Financially closed events do not allow changing participants", 409);
   }
 }
 
 function ensureVotingIsOpen(event: EventDetail) {
-  if (event.type !== "poll")
-    throw new HttpError("Only poll events support voting", 400);
+  if (event.type !== "poll") throw new HttpError("Only poll events support voting", 400);
   if (
     event.finalizedAt ||
     !event.votingClosesAt ||
@@ -518,10 +433,7 @@ function ensureVotingIsOpen(event: EventDetail) {
   }
 }
 
-function mergeOption(
-  option: EventOption,
-  input: UpdateEventOptionInput,
-): EventOption {
+function mergeOption(option: EventOption, input: UpdateEventOptionInput): EventOption {
   return {
     ...option,
     label: input.label !== undefined ? input.label || null : option.label,
@@ -539,10 +451,7 @@ function validateMergedOption(option: EventOption) {
     throw new HttpError("Range options require an end date", 400);
   }
 
-  if (
-    option.endAt &&
-    new Date(option.endAt).getTime() <= new Date(option.startAt).getTime()
-  ) {
+  if (option.endAt && new Date(option.endAt).getTime() <= new Date(option.startAt).getTime()) {
     throw new HttpError("Option end must be after start", 400);
   }
 }
@@ -574,10 +483,7 @@ async function sendAndLogInviteEmail(
     template: "event_invitation",
     provider: "resend",
   });
-  const eventUrl = new URL(
-    `/events/${eventId}`,
-    config.appPublicUrl,
-  ).toString();
+  const eventUrl = new URL(`/events/${eventId}`, config.appPublicUrl).toString();
   const result = await emailService.sendInviteEmail({
     to: email,
     eventTitle,

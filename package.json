@@ -7,7 +7,9 @@
     "dev": "tsx --env-file=.env --watch ./src/app.ts",
     "build": "tsc",
     "start": "node dist/app.js",
-    "test": "vitest run"
+    "test": "vitest run",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.106.0",
@@ -22,6 +24,7 @@
     "@types/express": "^5.0.0",
     "@types/multer": "^2.2.0",
     "@types/node": "^24.12.3",
+    "prettier": "^3.9.6",
     "tsx": "^4.19.0",
     "typescript": "^6.0.3",
     "vitest": "^4.1.9"

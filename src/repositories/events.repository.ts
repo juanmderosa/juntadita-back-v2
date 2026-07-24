@@ -33,8 +33,7 @@ type EventResultWinnerRow = { event_id: string; winning_option_id: string };
 
 const eventSelect =
   "id,created_by,title,description,type,currency_code,timezone,voting_closes_at,fixed_start_at,fixed_end_at,finalized_at,financial_status,financial_state_changed_at,financial_state_changed_by,financial_participants_locked_at,created_at,updated_at";
-const optionSelect =
-  "id,event_id,type,label,start_at,end_at,created_at,updated_at";
+const optionSelect = "id,event_id,type,label,start_at,end_at,created_at,updated_at";
 const participantSelect =
   "id,event_id,user_id,email,display_name,role,status,participates_in_expenses,invited_by,created_at,updated_at";
 
@@ -172,10 +171,7 @@ export const eventsRepository = {
     return (data ?? []).map(mapEventOptionRow);
   },
 
-  async findOptionById(
-    eventId: string,
-    optionId: string,
-  ): Promise<EventOption | null> {
+  async findOptionById(eventId: string, optionId: string): Promise<EventOption | null> {
     const { data, error } = await getSupabaseAdmin()
       .from("event_options")
       .select(optionSelect)
@@ -187,10 +183,7 @@ export const eventsRepository = {
     return data ? mapEventOptionRow(data) : null;
   },
 
-  async createOption(
-    eventId: string,
-    input: CreateEventOptionInput,
-  ): Promise<EventOption> {
+  async createOption(eventId: string, input: CreateEventOptionInput): Promise<EventOption> {
     const { data, error } = await getSupabaseAdmin()
       .from("event_options")
       .insert({
@@ -207,10 +200,7 @@ export const eventsRepository = {
     return mapEventOptionRow(data);
   },
 
-  async createOptions(
-    eventId: string,
-    inputs: CreateEventOptionInput[],
-  ): Promise<EventOption[]> {
+  async createOptions(eventId: string, inputs: CreateEventOptionInput[]): Promise<EventOption[]> {
     if (inputs.length === 0) return [];
 
     const { data, error } = await getSupabaseAdmin()
@@ -313,11 +303,7 @@ export const eventsRepository = {
     return data ? mapEventParticipantRow(data) : null;
   },
 
-  async replaceVotes(
-    eventId: string,
-    participantId: string,
-    optionIds: string[],
-  ) {
+  async replaceVotes(eventId: string, participantId: string, optionIds: string[]) {
     const { error } = await getSupabaseAdmin().rpc("replace_poll_votes", {
       p_event_id: eventId,
       p_participant_id: participantId,
@@ -327,12 +313,9 @@ export const eventsRepository = {
   },
 
   async finalizeIfDue(eventId: string) {
-    const { error } = await getSupabaseAdmin().rpc(
-      "finalize_poll_event_if_due",
-      {
-        p_event_id: eventId,
-      },
-    );
+    const { error } = await getSupabaseAdmin().rpc("finalize_poll_event_if_due", {
+      p_event_id: eventId,
+    });
     if (error) throw error;
   },
 
@@ -497,8 +480,7 @@ export const eventsRepository = {
     } = { invited_by: input.invitedBy };
 
     if (input.userId !== undefined) updates.user_id = input.userId;
-    if (input.displayName !== undefined)
-      updates.display_name = input.displayName;
+    if (input.displayName !== undefined) updates.display_name = input.displayName;
     if (input.status !== undefined) updates.status = input.status;
 
     const { data, error } = await getSupabaseAdmin()
@@ -560,11 +542,7 @@ export const eventsRepository = {
 };
 
 type ExpenseParticipationUpdateResult = {
-  status:
-    | "updated"
-    | "participant_not_found"
-    | "payments_exist"
-    | "sole_splits";
+  status: "updated" | "participant_not_found" | "payments_exist" | "sole_splits";
   expenses?: Array<{ id: string; title: string }>;
 };
 
@@ -589,9 +567,7 @@ async function addWinningOptions(events: EventSummary[]) {
     .in("id", optionIds)
     .overrideTypes<EventOptionRow[]>();
   if (optionsError) throw optionsError;
-  const optionsById = new Map(
-    (optionRows ?? []).map((row) => [row.id, mapEventOptionRow(row)]),
-  );
+  const optionsById = new Map((optionRows ?? []).map((row) => [row.id, mapEventOptionRow(row)]));
   const winnerIdByEvent = new Map(
     (resultRows ?? []).map((row) => [row.event_id, row.winning_option_id]),
   );

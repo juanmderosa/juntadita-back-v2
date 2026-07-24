@@ -36,22 +36,15 @@ export const groupsService = {
   },
 
   async create(auth: AuthContext, input: CreateGroupInput) {
-    const existing = await groupsRepository.findOwnedByName(
-      auth.userId,
-      input.name,
-    );
-    if (existing)
-      throw new HttpError("You already have a group with this name", 409);
+    const existing = await groupsRepository.findOwnedByName(auth.userId, input.name);
+    if (existing) throw new HttpError("You already have a group with this name", 409);
     const group = await groupsRepository.create(auth.userId, input.name);
     return { ...mapGroupRow(group), members: [] };
   },
 
   async update(auth: AuthContext, groupId: string, input: UpdateGroupInput) {
     await requireOwnedGroup(auth.userId, groupId);
-    const existing = await groupsRepository.findOwnedByName(
-      auth.userId,
-      input.name,
-    );
+    const existing = await groupsRepository.findOwnedByName(auth.userId, input.name);
     if (existing && existing.id !== groupId) {
       throw new HttpError("You already have a group with this name", 409);
     }
@@ -65,22 +58,12 @@ export const groupsService = {
     return { deleted: true as const };
   },
 
-  async addMembers(
-    auth: AuthContext,
-    groupId: string,
-    input: AddGroupMembersInput,
-  ) {
+  async addMembers(auth: AuthContext, groupId: string, input: AddGroupMembersInput) {
     await requireOwnedGroup(auth.userId, groupId);
-    const existing = await groupsRepository.findMembersByEmails(
-      groupId,
-      input.emails,
-    );
+    const existing = await groupsRepository.findMembersByEmails(groupId, input.emails);
     const existingEmails = new Set(existing.map((member) => member.email));
-    const emailsToCreate = input.emails.filter(
-      (email) => !existingEmails.has(email),
-    );
-    if (emailsToCreate.length > 0)
-      await groupsRepository.createMembers(groupId, emailsToCreate);
+    const emailsToCreate = input.emails.filter((email) => !existingEmails.has(email));
+    if (emailsToCreate.length > 0) await groupsRepository.createMembers(groupId, emailsToCreate);
     return toDetail(auth.userId, groupId);
   },
 

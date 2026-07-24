@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { eventsController } from "../controllers/events.controller.js";
 import { expensesController } from "../controllers/expenses.controller.js";
+import { paymentsController } from "../controllers/payments.controller.js";
 import { requireAuth } from "../middlewares/requireAuth.js";
 import { validate } from "../middlewares/validation.middleware.js";
 import {
@@ -30,20 +31,17 @@ import {
   listExpensesQuerySchema,
   updateExpenseSchema,
 } from "../schemas/expenses.schemas.js";
+import {
+  createPaymentSchema,
+  paymentParamsSchema,
+  voidPaymentSchema,
+} from "../schemas/payments.schemas.js";
 
 export const eventsRouter = Router();
 
 eventsRouter.use(requireAuth);
-eventsRouter.post(
-  "/",
-  validate({ body: createEventSchema }),
-  eventsController.create,
-);
-eventsRouter.get(
-  "/",
-  validate({ query: listEventsQuerySchema }),
-  eventsController.list,
-);
+eventsRouter.post("/", validate({ body: createEventSchema }), eventsController.create);
+eventsRouter.get("/", validate({ query: listEventsQuerySchema }), eventsController.list);
 eventsRouter.get(
   "/:eventId/options",
   validate({ params: eventParamsSchema }),
@@ -68,6 +66,21 @@ eventsRouter.delete(
   "/:eventId/options/:optionId",
   validate({ params: eventOptionParamsSchema }),
   eventsController.deleteOption,
+);
+eventsRouter.get(
+  "/:eventId/payments",
+  validate({ params: eventParamsSchema }),
+  paymentsController.overview,
+);
+eventsRouter.post(
+  "/:eventId/payments",
+  validate({ params: eventParamsSchema, body: createPaymentSchema }),
+  paymentsController.create,
+);
+eventsRouter.post(
+  "/:eventId/payments/:paymentId/void",
+  validate({ params: paymentParamsSchema, body: voidPaymentSchema }),
+  paymentsController.void,
 );
 eventsRouter.get(
   "/:eventId/voting",
@@ -154,11 +167,7 @@ eventsRouter.delete(
   validate({ params: expenseAttachmentParamsSchema }),
   expensesController.deleteAttachment,
 );
-eventsRouter.get(
-  "/:eventId",
-  validate({ params: eventParamsSchema }),
-  eventsController.getById,
-);
+eventsRouter.get("/:eventId", validate({ params: eventParamsSchema }), eventsController.getById);
 eventsRouter.patch(
   "/:eventId",
   validate({ params: eventParamsSchema, body: updateEventSchema }),

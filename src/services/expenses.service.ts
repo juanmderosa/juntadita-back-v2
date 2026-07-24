@@ -1,10 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { eventsService } from "./events.service.js";
 import { expensesRepository } from "../repositories/expenses.repository.js";
-import type {
-  CreateExpenseInput,
-  UpdateExpenseInput,
-} from "../schemas/expenses.schemas.js";
+import type { CreateExpenseInput, UpdateExpenseInput } from "../schemas/expenses.schemas.js";
 import type { AuthContext } from "../types/auth.js";
 import type { EventDetail, EventParticipant } from "../types/events.js";
 import { HttpError } from "../types/httpError.js";
@@ -42,12 +39,7 @@ export const expensesService = {
     return this.getById(auth, eventId, expenseId);
   },
 
-  async update(
-    auth: AuthContext,
-    eventId: string,
-    expenseId: string,
-    input: UpdateExpenseInput,
-  ) {
+  async update(auth: AuthContext, eventId: string, expenseId: string, input: UpdateExpenseInput) {
     const [event, expense] = await Promise.all([
       eventsService.getById(auth, eventId),
       expensesRepository.findById(eventId, expenseId),
@@ -92,8 +84,7 @@ export const expensesService = {
     const event = await eventsService.getById(auth, eventId);
     ensureExpensesAreOpen(event);
     void expense;
-    const attachmentsCount =
-      await expensesRepository.countAttachments(expenseId);
+    const attachmentsCount = await expensesRepository.countAttachments(expenseId);
     if (attachmentsCount >= MAX_EXPENSE_ATTACHMENTS) {
       throw new HttpError(
         `An expense can have at most ${MAX_EXPENSE_ATTACHMENTS} attachments`,
@@ -102,11 +93,7 @@ export const expensesService = {
     }
 
     const storagePath = `${eventId}/${expenseId}/${randomUUID()}${getFileExtension(file.mimetype)}`;
-    await expensesRepository.uploadAttachment(
-      storagePath,
-      file.buffer,
-      file.mimetype,
-    );
+    await expensesRepository.uploadAttachment(storagePath, file.buffer, file.mimetype);
 
     try {
       return await expensesRepository.createAttachment({
@@ -130,14 +117,9 @@ export const expensesService = {
     attachmentId: string,
   ) {
     await this.getById(auth, eventId, expenseId);
-    const attachment = await expensesRepository.findAttachment(
-      expenseId,
-      attachmentId,
-    );
+    const attachment = await expensesRepository.findAttachment(expenseId, attachmentId);
     if (!attachment) throw new HttpError("Expense attachment not found", 404);
-    const url = await expensesRepository.createAttachmentSignedUrl(
-      attachment.storagePath,
-    );
+    const url = await expensesRepository.createAttachmentSignedUrl(attachment.storagePath);
     return { url, expiresAt: new Date(Date.now() + 60_000).toISOString() };
   },
 
@@ -154,10 +136,7 @@ export const expensesService = {
     if (!expense) throw new HttpError("Expense not found", 404);
     ensureExpensesAreOpen(event);
     ensureCanManageExpense(event, expense.createdByUserId, auth.userId);
-    const attachment = await expensesRepository.findAttachment(
-      expenseId,
-      attachmentId,
-    );
+    const attachment = await expensesRepository.findAttachment(expenseId, attachmentId);
     if (!attachment) throw new HttpError("Expense attachment not found", 404);
     await expensesRepository.removeAttachments([attachment.storagePath]);
     await expensesRepository.deleteAttachment(expenseId, attachmentId);
@@ -165,24 +144,14 @@ export const expensesService = {
   },
 };
 
-function ensureCanManageExpense(
-  event: EventDetail,
-  createdByUserId: string,
-  userId: string,
-) {
+function ensureCanManageExpense(event: EventDetail, createdByUserId: string, userId: string) {
   if (event.currentUserRole === "admin" || createdByUserId === userId) return;
-  throw new HttpError(
-    "Only the expense creator or event admin can manage this expense",
-    403,
-  );
+  throw new HttpError("Only the expense creator or event admin can manage this expense", 403);
 }
 
 function ensureExpensesAreOpen(event: EventDetail) {
   if (event.financialStatus === "payments_enabled") {
-    throw new HttpError(
-      "Expenses cannot change while payments are enabled",
-      409,
-    );
+    throw new HttpError("Expenses cannot change while payments are enabled", 409);
   }
 }
 
@@ -196,11 +165,7 @@ function resolveSplits(
       .map((participant) => [participant.id, participant]),
   );
   const payer = activeParticipants.get(input.paidByParticipantId);
-  if (!payer)
-    throw new HttpError(
-      "Expense payer must be an active event participant",
-      400,
-    );
+  if (!payer) throw new HttpError("Expense payer must be an active event participant", 400);
 
   const eligibleParticipants = new Map(
     [...activeParticipants.values()]
@@ -213,27 +178,18 @@ function resolveSplits(
       getEligibleParticipant(eligibleParticipants, participantId),
     );
     if (input.amountCents < participants.length) {
-      throw new HttpError(
-        "Expense amount is too small to split by whole cents",
-        400,
-      );
+      throw new HttpError("Expense amount is too small to split by whole cents", 400);
     }
     return splitEqually(input.amountCents, participants);
   }
 
   const splits = input.splits.map((split) => ({
     ...split,
-    participant: getEligibleParticipant(
-      eligibleParticipants,
-      split.participantId,
-    ),
+    participant: getEligibleParticipant(eligibleParticipants, split.participantId),
   }));
   const totalCents = splits.reduce((sum, split) => sum + split.amountCents, 0);
   if (totalCents !== input.amountCents) {
-    throw new HttpError(
-      "Expense splits must add up to the expense amount",
-      400,
-    );
+    throw new HttpError("Expense splits must add up to the expense amount", 400);
   }
   return splits.map(({ participantId, amountCents }) => ({
     participantId,
@@ -247,18 +203,12 @@ function getEligibleParticipant(
 ) {
   const participant = eligibleParticipants.get(participantId);
   if (!participant) {
-    throw new HttpError(
-      "Expense splits must use active expense participants",
-      400,
-    );
+    throw new HttpError("Expense splits must use active expense participants", 400);
   }
   return participant;
 }
 
-function splitEqually(
-  amountCents: number,
-  participants: EventParticipant[],
-): ResolvedSplit[] {
+function splitEqually(amountCents: number, participants: EventParticipant[]): ResolvedSplit[] {
   const sortedParticipants = [...participants].sort((left, right) =>
     left.id.localeCompare(right.id),
   );
@@ -279,7 +229,6 @@ function getFileExtension(contentType: string) {
     "application/pdf": ".pdf",
   };
   const extension = extensions[contentType];
-  if (!extension)
-    throw new HttpError("Unsupported expense attachment type", 400);
+  if (!extension) throw new HttpError("Unsupported expense attachment type", 400);
   return extension;
 }
