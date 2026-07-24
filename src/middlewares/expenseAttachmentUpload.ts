@@ -5,12 +5,7 @@ import { HttpError } from "../types/httpError.js";
 export const MAX_EXPENSE_ATTACHMENT_SIZE_BYTES = 10 * 1024 * 1024;
 export const MAX_EXPENSE_ATTACHMENTS = 5;
 
-const allowedContentTypes = new Set([
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-  "application/pdf",
-]);
+const allowedContentTypes = new Set(["image/jpeg", "image/png", "image/webp", "application/pdf"]);
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -26,11 +21,7 @@ const upload = multer({
 
 export const uploadExpenseAttachment = upload.single("file");
 
-export function requireExpenseAttachment(
-  request: Request,
-  response: Response,
-  next: NextFunction,
-) {
+export function requireExpenseAttachment(request: Request, response: Response, next: NextFunction) {
   if (!request.file) {
     next(new HttpError("An expense attachment file is required", 400));
     return;

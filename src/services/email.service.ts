@@ -8,8 +8,7 @@ type SendInviteEmailInput = {
 };
 
 export type SendInviteEmailResult =
-  | { ok: true; providerMessageId: string | null }
-  | { ok: false; errorMessage: string };
+  { ok: true; providerMessageId: string | null } | { ok: false; errorMessage: string };
 
 let resendClient: Resend | null = null;
 
@@ -23,9 +22,7 @@ function getResendClient() {
 }
 
 export const emailService = {
-  async sendInviteEmail(
-    input: SendInviteEmailInput,
-  ): Promise<SendInviteEmailResult> {
+  async sendInviteEmail(input: SendInviteEmailInput): Promise<SendInviteEmailResult> {
     if (!config.inviteFromEmail) {
       return {
         ok: false,
@@ -62,8 +59,7 @@ export const emailService = {
     } catch (error) {
       return {
         ok: false,
-        errorMessage:
-          error instanceof Error ? error.message : "Unknown email provider error",
+        errorMessage: error instanceof Error ? error.message : "Unknown email provider error",
       };
     }
   },

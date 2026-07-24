@@ -3,22 +3,12 @@ import { paymentsRepository } from "../repositories/payments.repository.js";
 import { expensesRepository } from "../repositories/expenses.repository.js";
 import type { AuthContext } from "../types/auth.js";
 import { HttpError } from "../types/httpError.js";
-import type {
-  CreatePaymentInput,
-  VoidPaymentInput,
-} from "../schemas/payments.schemas.js";
+import type { CreatePaymentInput, VoidPaymentInput } from "../schemas/payments.schemas.js";
 import type { EventDetail, EventParticipant } from "../types/events.js";
-import type {
-  ParticipantBalance,
-  PaymentOverview,
-  PaymentSuggestion,
-} from "../types/payments.js";
+import type { ParticipantBalance, PaymentOverview, PaymentSuggestion } from "../types/payments.js";
 
 export const paymentsService = {
-  async getOverview(
-    auth: AuthContext,
-    eventId: string,
-  ): Promise<PaymentOverview> {
+  async getOverview(auth: AuthContext, eventId: string): Promise<PaymentOverview> {
     const event = await eventsService.getById(auth, eventId);
     const [payments, expenses] = await Promise.all([
       paymentsRepository.listByEvent(eventId),
@@ -34,9 +24,7 @@ export const paymentsService = {
     const participants = new Map(
       event.participants
         .filter(
-          (participant) =>
-            participant.status !== "removed" &&
-            participant.participatesInExpenses,
+          (participant) => participant.status !== "removed" && participant.participatesInExpenses,
         )
         .map((participant) => [participant.id, participant]),
     );
@@ -45,19 +33,14 @@ export const paymentsService = {
     const to = participants.get(input.toParticipantId);
 
     if (!from || !to)
-      throw new HttpError(
-        "Payment participants must be active financial participants",
-        400,
-      );
+      throw new HttpError("Payment participants must be active financial participants", 400);
 
     const currentParticipant = event.participants.find(
-      (participant) =>
-        participant.userId === auth.userId && participant.status !== "removed",
+      (participant) => participant.userId === auth.userId && participant.status !== "removed",
     );
 
     const isAdmin = event.currentUserRole === "admin";
-    const canRegister =
-      currentParticipant?.id === from.id || (isAdmin && from.userId === null);
+    const canRegister = currentParticipant?.id === from.id || (isAdmin && from.userId === null);
 
     if (!canRegister)
       throw new HttpError(
@@ -78,12 +61,7 @@ export const paymentsService = {
     return payment;
   },
 
-  async void(
-    auth: AuthContext,
-    eventId: string,
-    paymentId: string,
-    input: VoidPaymentInput,
-  ) {
+  async void(auth: AuthContext, eventId: string, paymentId: string, input: VoidPaymentInput) {
     const [event, payment] = await Promise.all([
       eventsService.getById(auth, eventId),
       paymentsRepository.findById(eventId, paymentId),
@@ -91,17 +69,10 @@ export const paymentsService = {
 
     if (!payment) throw new HttpError("Payment not found", 404);
 
-    if (payment.status === "voided")
-      throw new HttpError("Payment is already voided", 409);
+    if (payment.status === "voided") throw new HttpError("Payment is already voided", 409);
 
-    if (
-      event.currentUserRole !== "admin" &&
-      payment.createdByUserId !== auth.userId
-    )
-      throw new HttpError(
-        "Only the payment creator or event admin can void this payment",
-        403,
-      );
+    if (event.currentUserRole !== "admin" && payment.createdByUserId !== auth.userId)
+      throw new HttpError("Only the payment creator or event admin can void this payment", 403);
 
     await paymentsRepository.void(paymentId, auth.userId, input.voidReason);
     const updated = await paymentsRepository.findById(eventId, paymentId);
@@ -126,13 +97,10 @@ function calculateBalances(
   payments: PaymentOverview["payments"],
 ): ParticipantBalance[] {
   const participants = event.participants.filter(
-    (participant) =>
-      participant.status !== "removed" && participant.participatesInExpenses,
+    (participant) => participant.status !== "removed" && participant.participatesInExpenses,
   );
 
-  const balances = new Map(
-    participants.map((participant) => [participant.id, 0]),
-  );
+  const balances = new Map(participants.map((participant) => [participant.id, 0]));
 
   for (const expense of expenses) {
     balances.set(
@@ -164,9 +132,7 @@ function calculateBalances(
   }));
 }
 
-function suggestSettlements(
-  balances: ParticipantBalance[],
-): PaymentSuggestion[] {
+function suggestSettlements(balances: ParticipantBalance[]): PaymentSuggestion[] {
   const debtors = balances
     .filter((item) => item.balanceCents < 0)
     .map((item) => ({ ...item, remaining: -item.balanceCents }))

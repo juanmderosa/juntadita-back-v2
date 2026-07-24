@@ -31,31 +31,37 @@ const expenseBaseSchema = z.object({
   paidByParticipantId: uuidSchema,
   title: expenseTitleSchema,
   description: expenseDescriptionSchema,
-  amountCents: positiveAmountInCentsSchema.max(
-    999_999_999_999,
-    "Expense amount is too large",
-  ),
+  amountCents: positiveAmountInCentsSchema.max(999_999_999_999, "Expense amount is too large"),
   spentAt: isoDateTimeSchema.optional(),
 });
 
 export const createExpenseSchema = z.discriminatedUnion("splitMethod", [
-  expenseBaseSchema.extend({
-    splitMethod: z.literal("equal"),
-    participantIds: participantIdsSchema,
-  }).strict(),
-  expenseBaseSchema.extend({
-    splitMethod: z.literal("custom"),
-    splits: z.array(z.object({
-      participantId: uuidSchema,
-      amountCents: positiveAmountInCentsSchema,
-    }).strict())
-      .min(1, "At least one split is required")
-      .max(100, "At most 100 splits can be created")
-      .refine(
-        (splits) => new Set(splits.map((split) => split.participantId)).size === splits.length,
-        "Split participants must be unique",
-      ),
-  }).strict(),
+  expenseBaseSchema
+    .extend({
+      splitMethod: z.literal("equal"),
+      participantIds: participantIdsSchema,
+    })
+    .strict(),
+  expenseBaseSchema
+    .extend({
+      splitMethod: z.literal("custom"),
+      splits: z
+        .array(
+          z
+            .object({
+              participantId: uuidSchema,
+              amountCents: positiveAmountInCentsSchema,
+            })
+            .strict(),
+        )
+        .min(1, "At least one split is required")
+        .max(100, "At most 100 splits can be created")
+        .refine(
+          (splits) => new Set(splits.map((split) => split.participantId)).size === splits.length,
+          "Split participants must be unique",
+        ),
+    })
+    .strict(),
 ]);
 
 export const updateExpenseSchema = createExpenseSchema;

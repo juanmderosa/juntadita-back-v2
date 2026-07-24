@@ -1,8 +1,5 @@
 import type { NextFunction, Request, Response } from "express";
-import {
-  paginatedResponse,
-  successResponse,
-} from "../helpers/response.helpers.js";
+import { paginatedResponse, successResponse } from "../helpers/response.helpers.js";
 import { expensesService } from "../services/expenses.service.js";
 import type {
   CreateExpenseInput,
@@ -13,10 +10,7 @@ import type {
 } from "../schemas/expenses.schemas.js";
 import type { AuthLocals } from "../types/auth.js";
 
-type ExpensesResponse<T extends object = object> = Response<
-  unknown,
-  AuthLocals & T
->;
+type ExpensesResponse<T extends object = object> = Response<unknown, AuthLocals & T>;
 
 export const expensesController = {
   async list(

@@ -35,11 +35,7 @@ export const expensesRepository = {
     return hydrateExpenses(eventId, data ?? []);
   },
 
-  async listByEvent(
-    eventId: string,
-    page: number,
-    limit: number,
-  ): Promise<PaginatedData<Expense>> {
+  async listByEvent(eventId: string, page: number, limit: number): Promise<PaginatedData<Expense>> {
     const from = (page - 1) * limit;
     const to = from + limit - 1;
     const { data, error, count } = await getSupabaseAdmin()
@@ -204,9 +200,7 @@ export const expensesRepository = {
 
   async findAttachment(expenseId: string, attachmentId: string) {
     const attachments = await this.listAttachments([expenseId]);
-    return (
-      attachments.find((attachment) => attachment.id === attachmentId) ?? null
-    );
+    return attachments.find((attachment) => attachment.id === attachmentId) ?? null;
   },
 
   async deleteAttachment(expenseId: string, attachmentId: string) {
@@ -218,11 +212,7 @@ export const expensesRepository = {
     if (error) throw error;
   },
 
-  async uploadAttachment(
-    storagePath: string,
-    file: Buffer,
-    contentType: string,
-  ) {
+  async uploadAttachment(storagePath: string, file: Buffer, contentType: string) {
     const { error } = await getSupabaseAdmin()
       .storage.from(expenseAttachmentsBucket)
       .upload(storagePath, file, { contentType, upsert: false });
@@ -258,16 +248,14 @@ async function hydrateExpenses(eventId: string, expenseRows: ExpenseRow[]) {
   const attachments = await expensesRepository.listAttachments(expenseIds);
 
   const participantIds = new Set<string>();
-  for (const expense of expenseRows)
-    participantIds.add(expense.paid_by_participant_id);
+  for (const expense of expenseRows) participantIds.add(expense.paid_by_participant_id);
   for (const split of splitRows ?? []) participantIds.add(split.participant_id);
-  const { data: participantRows, error: participantsError } =
-    await getSupabaseAdmin()
-      .from("event_participants")
-      .select(participantSelect)
-      .eq("event_id", eventId)
-      .in("id", [...participantIds])
-      .overrideTypes<EventParticipantRow[]>();
+  const { data: participantRows, error: participantsError } = await getSupabaseAdmin()
+    .from("event_participants")
+    .select(participantSelect)
+    .eq("event_id", eventId)
+    .in("id", [...participantIds])
+    .overrideTypes<EventParticipantRow[]>();
   if (participantsError) throw participantsError;
 
   const participantsById = new Map(
@@ -285,8 +273,7 @@ async function hydrateExpenses(eventId: string, expenseRows: ExpenseRow[]) {
   >();
 
   for (const attachment of attachments) {
-    const expenseAttachments =
-      attachmentsByExpenseId.get(attachment.expenseId) ?? [];
+    const expenseAttachments = attachmentsByExpenseId.get(attachment.expenseId) ?? [];
     expenseAttachments.push(attachment);
     attachmentsByExpenseId.set(attachment.expenseId, expenseAttachments);
   }
@@ -326,16 +313,13 @@ function mapExpenseRow(
     updatedAt: row.updated_at,
     splits: splitRows.map((split) => {
       const participant = participantsById.get(split.participant_id);
-      if (!participant)
-        throw new Error("Expense split participant is missing from the event");
+      if (!participant) throw new Error("Expense split participant is missing from the event");
       return {
         participantId: split.participant_id,
         amountCents: numericToCents(split.amount),
         participant,
       };
     }),
-    attachments: attachments.map(
-      ({ storagePath: _storagePath, ...attachment }) => attachment,
-    ),
+    attachments: attachments.map(({ storagePath: _storagePath, ...attachment }) => attachment),
   };
 }

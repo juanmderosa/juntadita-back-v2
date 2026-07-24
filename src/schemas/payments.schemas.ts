@@ -1,9 +1,5 @@
 import { z } from "zod";
-import {
-  isoDateTimeSchema,
-  positiveAmountInCentsSchema,
-  uuidSchema,
-} from "./common.schemas.js";
+import { isoDateTimeSchema, positiveAmountInCentsSchema, uuidSchema } from "./common.schemas.js";
 
 export const paymentParamsSchema = z.object({
   eventId: uuidSchema,

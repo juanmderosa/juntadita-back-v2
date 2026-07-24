@@ -1,9 +1,5 @@
 import { getSupabaseAdmin } from "../config/supabase.js";
-import type {
-  ContactGroupMember,
-  GroupMemberRow,
-  GroupRow,
-} from "../types/groups.js";
+import type { ContactGroupMember, GroupMemberRow, GroupRow } from "../types/groups.js";
 import { mapGroupMemberRow } from "../types/groups.js";
 
 const groupSelect = "id,owner_user_id,name,created_at,updated_at";
@@ -65,10 +61,7 @@ export const groupsRepository = {
   },
 
   async delete(groupId: string) {
-    const { error } = await getSupabaseAdmin()
-      .from("groups")
-      .delete()
-      .eq("id", groupId);
+    const { error } = await getSupabaseAdmin().from("groups").delete().eq("id", groupId);
     if (error) throw error;
   },
 
@@ -115,22 +108,17 @@ export const groupsRepository = {
   },
 
   async getEmailsForOwnedGroups(userId: string, groupIds: string[]) {
-    if (groupIds.length === 0)
-      return { foundGroupIds: [], emails: [] as string[] };
+    if (groupIds.length === 0) return { foundGroupIds: [], emails: [] as string[] };
     const { data, error } = await getSupabaseAdmin()
       .from("groups")
       .select("id,group_members(email)")
       .eq("owner_user_id", userId)
       .in("id", groupIds)
-      .overrideTypes<
-        Array<{ id: string; group_members: Array<{ email: string }> }>
-      >();
+      .overrideTypes<Array<{ id: string; group_members: Array<{ email: string }> }>>();
     if (error) throw error;
     return {
       foundGroupIds: (data ?? []).map((group) => group.id),
-      emails: (data ?? []).flatMap((group) =>
-        group.group_members.map((member) => member.email),
-      ),
+      emails: (data ?? []).flatMap((group) => group.group_members.map((member) => member.email)),
     };
   },
 };

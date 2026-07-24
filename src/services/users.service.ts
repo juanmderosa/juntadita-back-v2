@@ -12,10 +12,7 @@ export type CurrentUserResponse = {
   requiresProfileOnboarding: boolean;
 };
 
-function buildCurrentUserResponse(
-  auth: AuthContext,
-  profile: Profile,
-): CurrentUserResponse {
+function buildCurrentUserResponse(auth: AuthContext, profile: Profile): CurrentUserResponse {
   return {
     user: {
       id: auth.userId,
@@ -38,18 +35,13 @@ export const usersService = {
   },
 
   async updateCurrentUserProfile(auth: AuthContext, displayName: string) {
-    const existingProfile = await usersRepository.findProfileByUserId(
-      auth.userId,
-    );
+    const existingProfile = await usersRepository.findProfileByUserId(auth.userId);
 
     if (!existingProfile) {
       throw new HttpError("Authenticated user profile was not found", 404);
     }
 
-    const profile = await usersRepository.updateProfileDisplayName(
-      auth.userId,
-      displayName,
-    );
+    const profile = await usersRepository.updateProfileDisplayName(auth.userId, displayName);
 
     return buildCurrentUserResponse(auth, profile);
   },

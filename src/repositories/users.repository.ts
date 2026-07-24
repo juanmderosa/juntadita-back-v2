@@ -1,9 +1,5 @@
 import { getSupabaseAdmin } from "../config/supabase.js";
-import {
-  mapProfileRow,
-  type Profile,
-  type ProfileRow,
-} from "../types/profile.js";
+import { mapProfileRow, type Profile, type ProfileRow } from "../types/profile.js";
 
 const profileSelect =
   "id,email,display_name,avatar_url,onboarding_completed_at,created_at,updated_at";
@@ -35,13 +31,9 @@ export const usersRepository = {
     return (data ?? []).map(mapProfileRow);
   },
 
-  async updateProfileDisplayName(
-    userId: string,
-    displayName: string,
-  ): Promise<Profile> {
+  async updateProfileDisplayName(userId: string, displayName: string): Promise<Profile> {
     const existing = await this.findProfileByUserId(userId);
-    const onboardingCompletedAt =
-      existing?.onboardingCompletedAt ?? new Date().toISOString();
+    const onboardingCompletedAt = existing?.onboardingCompletedAt ?? new Date().toISOString();
 
     const { data, error } = await getSupabaseAdmin()
       .from("profiles")

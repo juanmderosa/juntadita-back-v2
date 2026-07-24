@@ -36,13 +36,11 @@ describe("response contracts", () => {
       data: ["item"],
       pagination: { page: 1, limit: 20, total: 1, totalPages: 1 },
     });
-    expect(errorResponse("Invalid", [{ field: "name", message: "Required" }])).toEqual(
-      {
-        status: "error",
-        message: "Invalid",
-        errors: [{ field: "name", message: "Required" }],
-      },
-    );
+    expect(errorResponse("Invalid", [{ field: "name", message: "Required" }])).toEqual({
+      status: "error",
+      message: "Invalid",
+      errors: [{ field: "name", message: "Required" }],
+    });
   });
 
   it("normalizes HttpError", () => {
@@ -70,12 +68,7 @@ describe("response contracts", () => {
     const schema = z.object({ name: z.string().min(1) });
     const validationError = schema.safeParse({ name: "" }).error;
 
-    errorHandler(
-      validationError,
-      {} as never,
-      validationResponse as unknown as Response,
-      vi.fn(),
-    );
+    errorHandler(validationError, {} as never, validationResponse as unknown as Response, vi.fn());
     errorHandler(
       new Error("database password leaked"),
       {} as never,
