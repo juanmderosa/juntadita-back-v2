@@ -3,6 +3,7 @@ import type {
   CreateEventOptionInput,
   CreateEventInput,
   InviteParticipantsInput,
+  UpdateExpenseParticipationInput,
   ReplaceVotesInput,
   ResolveTieInput,
   UpdateEventOptionInput,
@@ -248,6 +249,49 @@ export const eventsService = {
     }
 
     return { participants, emails: emailResults };
+  },
+
+  async updateExpenseParticipation(
+    auth: AuthContext,
+    eventId: string,
+    participantId: string,
+    input: UpdateExpenseParticipationInput,
+  ) {
+    await requireAdminEvent(auth, eventId);
+    const result = await eventsRepository.setExpenseParticipation(
+      eventId,
+      participantId,
+      input.participatesInExpenses,
+    );
+
+    if (result.status === "participant_not_found") {
+      throw new HttpError("Event participant not found", 404);
+    }
+
+    if (result.status === "payments_exist") {
+      throw new HttpError(
+        "Expense participation cannot change after payments are recorded",
+        409,
+      );
+    }
+
+    if (result.status === "sole_splits") {
+      throw new HttpError(
+        "Update or delete expenses without another participant before excluding this participant",
+        409,
+        result.expenses?.map((expense) => ({
+          field: `expenses.${expense.id}`,
+          message: expense.title,
+        })),
+      );
+    }
+
+    const participant = await eventsRepository.findParticipantById(
+      eventId,
+      participantId,
+    );
+    if (!participant) throw new HttpError("Event participant not found", 404);
+    return participant;
   },
 
   async replaceVotes(auth: AuthContext, eventId: string, input: ReplaceVotesInput) {

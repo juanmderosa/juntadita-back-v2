@@ -35,7 +35,7 @@ const eventSelect =
   "id,created_by,title,description,type,currency_code,timezone,voting_closes_at,fixed_start_at,fixed_end_at,finalized_at,created_at,updated_at";
 const optionSelect = "id,event_id,type,label,start_at,end_at,created_at,updated_at";
 const participantSelect =
-  "id,event_id,user_id,email,display_name,role,status,invited_by,created_at,updated_at";
+  "id,event_id,user_id,email,display_name,role,status,participates_in_expenses,invited_by,created_at,updated_at";
 
 function getNestedEvent(value: EventMembershipRow["events"]) {
   return Array.isArray(value) ? value[0] : value;
@@ -387,6 +387,36 @@ export const eventsRepository = {
     return (data ?? []).map(mapEventParticipantRow);
   },
 
+  async findParticipantById(eventId: string, participantId: string) {
+    const { data, error } = await getSupabaseAdmin()
+      .from("event_participants")
+      .select(participantSelect)
+      .eq("event_id", eventId)
+      .eq("id", participantId)
+      .neq("status", "removed")
+      .maybeSingle<EventParticipantRow>();
+
+    if (error) throw error;
+    return data ? mapEventParticipantRow(data) : null;
+  },
+
+  async setExpenseParticipation(
+    eventId: string,
+    participantId: string,
+    participatesInExpenses: boolean,
+  ) {
+    const { data, error } = await getSupabaseAdmin()
+      .rpc("set_event_participant_expense_participation", {
+        p_event_id: eventId,
+        p_participant_id: participantId,
+        p_participates: participatesInExpenses,
+      })
+      .single<ExpenseParticipationUpdateResult>();
+
+    if (error) throw error;
+    return data;
+  },
+
   async findParticipantsByEmails(eventId: string, emails: string[]) {
     if (emails.length === 0) return [];
 
@@ -502,6 +532,11 @@ export const eventsRepository = {
 
     if (error) throw error;
   },
+};
+
+type ExpenseParticipationUpdateResult = {
+  status: "updated" | "participant_not_found" | "payments_exist" | "sole_splits";
+  expenses?: Array<{ id: string; title: string }>;
 };
 
 async function addWinningOptions(events: EventSummary[]) {
