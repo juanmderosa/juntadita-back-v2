@@ -31,6 +31,7 @@ export const expensesService = {
 
   async create(auth: AuthContext, eventId: string, input: CreateExpenseInput) {
     const event = await eventsService.getById(auth, eventId);
+    ensureExpensesAreOpen(event);
     const splits = resolveSplits(event, input);
     const expenseId = await expensesRepository.create({
       eventId,
@@ -52,6 +53,7 @@ export const expensesService = {
       expensesRepository.findById(eventId, expenseId),
     ]);
     if (!expense) throw new HttpError("Expense not found", 404);
+    ensureExpensesAreOpen(event);
     ensureCanManageExpense(event, expense.createdByUserId, auth.userId);
     const splits = resolveSplits(event, input);
     const updated = await expensesRepository.update({
@@ -70,6 +72,7 @@ export const expensesService = {
       expensesRepository.findById(eventId, expenseId),
     ]);
     if (!expense) throw new HttpError("Expense not found", 404);
+    ensureExpensesAreOpen(event);
     ensureCanManageExpense(event, expense.createdByUserId, auth.userId);
     const attachments = await expensesRepository.listAttachments([expenseId]);
     await expensesRepository.removeAttachments(
@@ -85,7 +88,10 @@ export const expensesService = {
     expenseId: string,
     file: ExpenseAttachmentFile,
   ) {
-    await this.getById(auth, eventId, expenseId);
+    const expense = await this.getById(auth, eventId, expenseId);
+    const event = await eventsService.getById(auth, eventId);
+    ensureExpensesAreOpen(event);
+    void expense;
     const attachmentsCount =
       await expensesRepository.countAttachments(expenseId);
     if (attachmentsCount >= MAX_EXPENSE_ATTACHMENTS) {
@@ -146,6 +152,7 @@ export const expensesService = {
       expensesRepository.findById(eventId, expenseId),
     ]);
     if (!expense) throw new HttpError("Expense not found", 404);
+    ensureExpensesAreOpen(event);
     ensureCanManageExpense(event, expense.createdByUserId, auth.userId);
     const attachment = await expensesRepository.findAttachment(
       expenseId,
@@ -168,6 +175,15 @@ function ensureCanManageExpense(
     "Only the expense creator or event admin can manage this expense",
     403,
   );
+}
+
+function ensureExpensesAreOpen(event: EventDetail) {
+  if (event.financialStatus === "payments_enabled") {
+    throw new HttpError(
+      "Expenses cannot change while payments are enabled",
+      409,
+    );
+  }
 }
 
 function resolveSplits(

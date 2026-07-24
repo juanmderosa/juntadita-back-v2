@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   findAccessibleById: vi.fn(),
   findDetailAccessibleById: vi.fn(),
   updateBasicData: vi.fn(),
+  setFinancialStatus: vi.fn(),
   createOption: vi.fn(),
   createOptions: vi.fn(),
   findOptionById: vi.fn(),
@@ -43,6 +44,7 @@ vi.mock("../src/repositories/events.repository.js", () => ({
     findAccessibleById: mocks.findAccessibleById,
     findDetailAccessibleById: mocks.findDetailAccessibleById,
     updateBasicData: mocks.updateBasicData,
+    setFinancialStatus: mocks.setFinancialStatus,
     createOption: mocks.createOption,
     createOptions: mocks.createOptions,
     findOptionById: mocks.findOptionById,
@@ -102,6 +104,10 @@ const adminEvent = {
   fixedStartAt: null,
   fixedEndAt: null,
   finalizedAt: null,
+  financialStatus: "collecting_expenses",
+  financialStateChangedAt: "2026-07-17T00:00:00Z",
+  financialStateChangedBy: null,
+  financialParticipantsLockedAt: null,
   createdAt: "2026-07-06T15:00:00Z",
   updatedAt: "2026-07-06T15:00:00Z",
   optionsLocked: false,
@@ -172,7 +178,9 @@ describe("events service", () => {
   it("returns 404 without revealing a private event", async () => {
     mocks.findDetailAccessibleById.mockResolvedValue(null);
 
-    await expect(eventsService.getById(auth, "private-id")).rejects.toMatchObject({
+    await expect(
+      eventsService.getById(auth, "private-id"),
+    ).rejects.toMatchObject({
       statusCode: 404,
       message: "Event not found",
     });
@@ -422,9 +430,14 @@ describe("events service", () => {
     mocks.setExpenseParticipation.mockResolvedValue({ status: "updated" });
 
     await expect(
-      eventsService.updateExpenseParticipation(auth, "event-id", "participant-id", {
-        participatesInExpenses: false,
-      }),
+      eventsService.updateExpenseParticipation(
+        auth,
+        "event-id",
+        "participant-id",
+        {
+          participatesInExpenses: false,
+        },
+      ),
     ).resolves.toMatchObject({ participatesInExpenses: false });
 
     expect(mocks.setExpenseParticipation).toHaveBeenCalledWith(
@@ -435,11 +448,18 @@ describe("events service", () => {
   });
 
   it("rejects expense participation exclusions after payments or with sole splits", async () => {
-    mocks.setExpenseParticipation.mockResolvedValueOnce({ status: "payments_exist" });
+    mocks.setExpenseParticipation.mockResolvedValueOnce({
+      status: "payments_exist",
+    });
     await expect(
-      eventsService.updateExpenseParticipation(auth, "event-id", "participant-id", {
-        participatesInExpenses: false,
-      }),
+      eventsService.updateExpenseParticipation(
+        auth,
+        "event-id",
+        "participant-id",
+        {
+          participatesInExpenses: false,
+        },
+      ),
     ).rejects.toMatchObject({ statusCode: 409 });
 
     mocks.setExpenseParticipation.mockResolvedValueOnce({
@@ -447,29 +467,80 @@ describe("events service", () => {
       expenses: [{ id: "expense-id", title: "Cena" }],
     });
     await expect(
-      eventsService.updateExpenseParticipation(auth, "event-id", "participant-id", {
-        participatesInExpenses: false,
-      }),
+      eventsService.updateExpenseParticipation(
+        auth,
+        "event-id",
+        "participant-id",
+        {
+          participatesInExpenses: false,
+        },
+      ),
     ).rejects.toMatchObject({
       statusCode: 409,
       errors: [{ field: "expenses.expense-id", message: "Cena" }],
     });
   });
 
+  it("enables payments only once and refreshes the financial event state", async () => {
+    mocks.setFinancialStatus.mockResolvedValue({ id: "event-id" });
+    mocks.findDetailAccessibleById
+      .mockResolvedValueOnce(adminEvent)
+      .mockResolvedValueOnce({
+        ...adminEvent,
+        financialStatus: "payments_enabled",
+        financialParticipantsLockedAt: "2026-07-24T00:00:00Z",
+      });
+
+    await expect(
+      eventsService.enablePayments(auth, "event-id"),
+    ).resolves.toMatchObject({
+      financialStatus: "payments_enabled",
+    });
+    expect(mocks.setFinancialStatus).toHaveBeenCalledWith(
+      "event-id",
+      auth.userId,
+      "payments_enabled",
+    );
+  });
+
+  it("blocks participant changes after the first financial close and reopens only from payments", async () => {
+    mocks.findDetailAccessibleById.mockResolvedValue({
+      ...adminEvent,
+      financialStatus: "collecting_expenses",
+      financialParticipantsLockedAt: "2026-07-24T00:00:00Z",
+    });
+    await expect(
+      eventsService.updateExpenseParticipation(
+        auth,
+        "event-id",
+        "participant-id",
+        {
+          participatesInExpenses: false,
+        },
+      ),
+    ).rejects.toMatchObject({ statusCode: 409 });
+
+    await expect(
+      eventsService.reopenExpenses(auth, "event-id"),
+    ).rejects.toMatchObject({ statusCode: 409 });
+  });
+
   it("replaces a participant's selected poll options and returns the voting state", async () => {
     const event = {
       ...adminEvent,
       participants: [{ id: "participant-id", status: "joined" }],
-      options: [{
-        id: "option-id",
-        eventId: "event-id",
-        type: "date" as const,
-        label: null,
-        startAt: "2026-08-01T03:00:00Z",
-        endAt: null,
-        createdAt: "2026-07-06T15:00:00Z",
-        updatedAt: "2026-07-06T15:00:00Z",
-      }],
+      options: [
+        {
+          id: "option-id",
+          eventId: "event-id",
+          type: "date" as const,
+          label: null,
+          startAt: "2026-08-01T03:00:00Z",
+          endAt: null,
+          createdAt: "2026-07-06T15:00:00Z",
+          updatedAt: "2026-07-06T15:00:00Z",
+        },
+      ],
     };
     mocks.findDetailAccessibleById.mockResolvedValue(event);
     mocks.listVoteRows.mockResolvedValue([
@@ -477,16 +548,24 @@ describe("events service", () => {
     ]);
 
     await expect(
-      eventsService.replaceVotes(auth, "event-id", { optionIds: ["option-id"] }),
+      eventsService.replaceVotes(auth, "event-id", {
+        optionIds: ["option-id"],
+      }),
     ).resolves.toMatchObject({ selectedOptionIds: ["option-id"] });
-    expect(mocks.replaceVotes).toHaveBeenCalledWith("event-id", "participant-id", ["option-id"]);
+    expect(mocks.replaceVotes).toHaveBeenCalledWith(
+      "event-id",
+      "participant-id",
+      ["option-id"],
+    );
   });
 
   it("finalizes a due poll when its voting state is requested", async () => {
     const dueEvent = { ...adminEvent, votingClosesAt: "2020-01-01T00:00:00Z" };
     mocks.findDetailAccessibleById.mockResolvedValue(dueEvent);
 
-    await expect(eventsService.getVoting(auth, "event-id")).resolves.toMatchObject({
+    await expect(
+      eventsService.getVoting(auth, "event-id"),
+    ).resolves.toMatchObject({
       isOpen: false,
     });
     expect(mocks.finalizeIfDue).toHaveBeenCalledWith("event-id");
@@ -502,6 +581,10 @@ describe("events service", () => {
     });
 
     await eventsService.resolveTie(auth, "event-id", { optionId: "option-id" });
-    expect(mocks.resolveTie).toHaveBeenCalledWith("event-id", "option-id", auth.userId);
+    expect(mocks.resolveTie).toHaveBeenCalledWith(
+      "event-id",
+      "option-id",
+      auth.userId,
+    );
   });
 });

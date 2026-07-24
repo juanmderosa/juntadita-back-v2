@@ -34,8 +34,16 @@ import {
 export const eventsRouter = Router();
 
 eventsRouter.use(requireAuth);
-eventsRouter.post("/", validate({ body: createEventSchema }), eventsController.create);
-eventsRouter.get("/", validate({ query: listEventsQuerySchema }), eventsController.list);
+eventsRouter.post(
+  "/",
+  validate({ body: createEventSchema }),
+  eventsController.create,
+);
+eventsRouter.get(
+  "/",
+  validate({ query: listEventsQuerySchema }),
+  eventsController.list,
+);
 eventsRouter.get(
   "/:eventId/options",
   validate({ params: eventParamsSchema }),
@@ -61,9 +69,21 @@ eventsRouter.delete(
   validate({ params: eventOptionParamsSchema }),
   eventsController.deleteOption,
 );
-eventsRouter.get("/:eventId/voting", validate({ params: voteParamsSchema }), eventsController.getVoting);
-eventsRouter.put("/:eventId/votes", validate({ params: voteParamsSchema, body: replaceVotesSchema }), eventsController.replaceVotes);
-eventsRouter.post("/:eventId/result/resolve-tie", validate({ params: voteParamsSchema, body: resolveTieSchema }), eventsController.resolveTie);
+eventsRouter.get(
+  "/:eventId/voting",
+  validate({ params: voteParamsSchema }),
+  eventsController.getVoting,
+);
+eventsRouter.put(
+  "/:eventId/votes",
+  validate({ params: voteParamsSchema, body: replaceVotesSchema }),
+  eventsController.replaceVotes,
+);
+eventsRouter.post(
+  "/:eventId/result/resolve-tie",
+  validate({ params: voteParamsSchema, body: resolveTieSchema }),
+  eventsController.resolveTie,
+);
 eventsRouter.get(
   "/:eventId/participants",
   validate({ params: eventParamsSchema }),
@@ -81,6 +101,16 @@ eventsRouter.patch(
     body: updateExpenseParticipationSchema,
   }),
   eventsController.updateExpenseParticipation,
+);
+eventsRouter.post(
+  "/:eventId/financial-status/enable-payments",
+  validate({ params: eventParamsSchema }),
+  eventsController.enablePayments,
+);
+eventsRouter.post(
+  "/:eventId/financial-status/reopen-expenses",
+  validate({ params: eventParamsSchema }),
+  eventsController.reopenExpenses,
 );
 eventsRouter.get(
   "/:eventId/expenses",
